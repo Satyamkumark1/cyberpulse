@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cyberpulse.ai/schemas/predict-request.schema.json",
+  "title": "PredictRequest",
+  "description": "POST /api/predict request body (architecture/api-design.md API-010).",
+  "type": "object",
+  "properties": {
+    "complaintId": { "type": "string", "pattern": "^C-[0-9]{5}$" },
+    "topK": { "type": "integer", "minimum": 1, "maximum": 20, "default": 5 },
+    "forceRefresh": { "type": "boolean", "default": false }
+  },
+  "required": ["complaintId"],
+  "additionalProperties": false
+}

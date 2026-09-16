@@ -1,0 +1,26 @@
+node_modules/
+.pnpm-store/
+.next/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+
+.env
+.env.local
+
+# FR-01.8: the generator writes to a version-controlled data directory —
+# data/generated/ is committed, not ignored.
+
+apps/ml-service/models/*.joblib
+!apps/ml-service/models/.gitkeep
+
+*.log
+.DS_Store

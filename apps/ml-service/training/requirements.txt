@@ -1,0 +1,6 @@
+# Training-only dependencies. Never copied into docker/Dockerfile.ml — the
+# served image installs only apps/ml-service/requirements.txt and therefore
+# never has a database driver or credentials (RULE-ai.md, RULE-security.md
+# "The ML boundary" — no DB credentials in the serving process, ever).
+-r ../requirements.txt
+psycopg[binary]==3.2.5

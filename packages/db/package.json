@@ -1,0 +1,25 @@
+{
+  "name": "@cyberpulse/db",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "client.ts",
+  "scripts": {
+    "generate": "drizzle-kit generate",
+    "migrate": "drizzle-kit migrate",
+    "seed": "tsx seed/seed.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cyberpulse/shared": "workspace:*",
+    "drizzle-orm": "^0.45.2",
+    "postgres": "^3.4.4"
+  },
+  "devDependencies": {
+    "@cyberpulse/config": "workspace:*",
+    "@types/node": "^22.7.5",
+    "drizzle-kit": "^0.31.10",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3"
+  }
+}

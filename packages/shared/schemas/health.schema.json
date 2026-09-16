@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cyberpulse.ai/schemas/health.schema.json",
+  "title": "HealthResponse",
+  "description": "GET /api/health (architecture/api-design.md API-080). Composes web, database and ML status; never throws.",
+  "type": "object",
+  "properties": {
+    "status": { "type": "string", "enum": ["healthy", "degraded", "unhealthy"] },
+    "web": {
+      "type": "object",
+      "properties": {
+        "status": { "type": "string", "enum": ["up", "degraded", "down"] },
+        "latencyMs": { "type": "number", "minimum": 0 }
+      },
+      "required": ["status", "latencyMs"],
+      "additionalProperties": false
+    },
+    "database": {
+      "type": "object",
+      "properties": {
+        "status": { "type": "string", "enum": ["up", "degraded", "down"] },
+        "latencyMs": { "type": "number", "minimum": 0 }
+      },
+      "required": ["status", "latencyMs"],
+      "additionalProperties": false
+    },
+    "mlService": {
+      "type": "object",
+      "properties": {
+        "status": { "type": "string", "enum": ["up", "degraded", "down"] },
+        "latencyMs": { "type": "number", "minimum": 0 },
+        "modelVersion": { "type": ["string", "null"] },
+        "modelLoaded": { "type": "boolean" }
+      },
+      "required": ["status", "latencyMs", "modelLoaded"],
+      "additionalProperties": false
+    },
+    "checkedAt": { "type": "string", "format": "date-time" }
+  },
+  "required": ["status", "web", "database", "mlService", "checkedAt"],
+  "additionalProperties": false
+}

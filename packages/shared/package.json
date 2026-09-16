@@ -1,0 +1,23 @@
+{
+  "name": "@cyberpulse/shared",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "generate:zod": "tsx scripts/generate-zod.ts",
+    "generate:pydantic": "bash scripts/generate-pydantic.sh",
+    "generate": "pnpm run generate:zod && pnpm run generate:pydantic",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@cyberpulse/config": "workspace:*",
+    "@types/node": "^22.7.5",
+    "json-schema-to-zod": "^2.4.1",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3"
+  }
+}

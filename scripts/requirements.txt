@@ -1,0 +1,5 @@
+# Tooling for scripts/generate-data and scripts/evaluation — not part of any
+# deployed service. ADR-005: h3-py for indexing.
+h3==4.1.2
+scipy==1.14.1
+numpy==2.1.2

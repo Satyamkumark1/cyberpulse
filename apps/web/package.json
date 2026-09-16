@@ -1,0 +1,47 @@
+{
+  "name": "web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test:unit": "vitest run",
+    "test:int": "vitest run --config vitest.integration.config.ts",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@cyberpulse/db": "workspace:*",
+    "@cyberpulse/shared": "workspace:*",
+    "@tanstack/react-query": "^5.102.8",
+    "@xyflow/react": "^12.11.6",
+    "drizzle-orm": "^0.45.2",
+    "h3-js": "^4.5.0",
+    "maplibre-gl": "^6.10.0",
+    "next": "15.5.25",
+    "pino": "^9.4.0",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@cyberpulse/config": "workspace:*",
+    "@eslint/eslintrc": "^3.1.0",
+    "@playwright/test": "^1.63.0",
+    "@testing-library/react": "^16.0.1",
+    "@types/node": "^22.7.5",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^9.12.0",
+    "eslint-config-next": "15.5.25",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.13",
+    "typescript": "^5.6.3",
+    "vite": "^7.3.6",
+    "vitest": "^5.0.1"
+  }
+}

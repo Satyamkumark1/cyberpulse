@@ -1,0 +1,95 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cyberpulse.ai/schemas/ml-predict-request.schema.json",
+  "title": "MlPredictRequest",
+  "description": "POST /predict request body, ML service (architecture/api-design.md ML-001). The web application supplies everything; the service reads no database (RULE-security.md 'The ML boundary').",
+  "type": "object",
+  "properties": {
+    "requestId": { "type": "string", "minLength": 1 },
+    "complaint": {
+      "type": "object",
+      "properties": {
+        "complaintId": { "type": "string", "pattern": "^C-[0-9]{5}$" },
+        "fraudType": {
+          "type": "string",
+          "enum": ["UPI_FRAUD", "INVESTMENT_SCAM", "PHISHING", "JOB_SCAM", "QR_FRAUD", "CARD_FRAUD"]
+        },
+        "amountPaise": { "type": "integer", "minimum": 1 },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "victimLat": { "type": "number", "minimum": 6.0, "maximum": 37.5 },
+        "victimLon": { "type": "number", "minimum": 68.0, "maximum": 97.5 },
+        "victimH3R8": { "type": "string", "minLength": 1 }
+      },
+      "required": ["complaintId", "fraudType", "amountPaise", "timestamp", "victimLat", "victimLon", "victimH3R8"],
+      "additionalProperties": false
+    },
+    "transactions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "amountPaise": { "type": "integer", "minimum": 1 },
+          "timestamp": { "type": "string", "format": "date-time" },
+          "channel": { "type": "string", "enum": ["UPI", "IMPS", "NEFT", "RTGS", "CARD", "ATM", "WALLET"] },
+          "hopIndex": { "type": "integer", "minimum": 0 },
+          "riskIndicator": { "type": "string", "enum": ["NONE", "LOW", "MEDIUM", "HIGH"] }
+        },
+        "required": ["amountPaise", "timestamp", "channel", "hopIndex", "riskIndicator"],
+        "additionalProperties": false
+      }
+    },
+    "accounts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "accountId": { "type": "string", "pattern": "^ACC-[0-9]{8}$" },
+          "accountType": { "type": "string", "enum": ["VICTIM", "MULE", "SUSPICIOUS", "MERCHANT", "NORMAL"] },
+          "openedAt": { "type": "string", "format": "date-time" },
+          "riskScore": { "type": "number", "minimum": 0, "maximum": 1 },
+          "priorSuspiciousFlags": { "type": "integer", "minimum": 0 },
+          "priorWithdrawalCount": { "type": "integer", "minimum": 0 }
+        },
+        "required": ["accountId", "accountType", "openedAt", "riskScore", "priorSuspiciousFlags", "priorWithdrawalCount"],
+        "additionalProperties": false
+      }
+    },
+    "candidateCells": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 60,
+      "items": {
+        "type": "object",
+        "properties": {
+          "h3Index": { "type": "string", "minLength": 1 },
+          "lat": { "type": "number" },
+          "lon": { "type": "number" },
+          "atmCount": { "type": "integer", "minimum": 0 },
+          "atmDensity": { "type": "number", "minimum": 0 },
+          "historicalHotspotScore": { "type": "number", "minimum": 0, "maximum": 1 },
+          "withdrawalCount": { "type": "integer", "minimum": 0 },
+          "name": { "type": "string", "minLength": 1 },
+          "district": { "type": "string", "minLength": 1 },
+          "state": { "type": "string", "minLength": 1 }
+        },
+        "required": [
+          "h3Index", "lat", "lon", "atmCount", "atmDensity", "historicalHotspotScore", "withdrawalCount",
+          "name", "district", "state"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "thresholds": {
+      "type": "object",
+      "properties": {
+        "high": { "type": "number", "minimum": 0, "maximum": 1 },
+        "medium": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "required": ["high", "medium"],
+      "additionalProperties": false
+    },
+    "topK": { "type": "integer", "minimum": 1, "maximum": 20, "default": 5 }
+  },
+  "required": ["requestId", "complaint", "transactions", "accounts", "candidateCells"],
+  "additionalProperties": false
+}

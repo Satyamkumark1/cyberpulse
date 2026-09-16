@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cyberpulse.ai/schemas/ml-health.schema.json",
+  "title": "MlHealthResponse",
+  "description": "GET /health on the ML service (architecture/api-design.md ML-003). Validated on arrival by the web app's ML client — a malformed response becomes a typed error, never a database row (RULE-backend.md).",
+  "type": "object",
+  "properties": {
+    "status": { "type": "string", "enum": ["healthy", "degraded", "unhealthy"] },
+    "modelLoaded": { "type": "boolean" },
+    "modelVersion": { "type": ["string", "null"] },
+    "featureSchemaVersion": { "type": ["string", "null"] },
+    "loadedAt": { "type": ["string", "null"], "format": "date-time" }
+  },
+  "required": ["status", "modelLoaded", "modelVersion", "featureSchemaVersion"],
+  "additionalProperties": false
+}

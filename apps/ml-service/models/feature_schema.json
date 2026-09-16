@@ -1,0 +1,48 @@
+{
+  "version": "fs-1",
+  "order": [
+    "txn_amount_total",
+    "txn_velocity_1h",
+    "linked_account_count",
+    "account_age_days_min",
+    "prior_suspicious_flags",
+    "distance_km",
+    "atm_density",
+    "historical_hotspot_score",
+    "hour_of_day",
+    "day_of_week",
+    "recency_hours",
+    "withdrawal_count",
+    "linked_depth"
+  ],
+  "dtypes": {
+    "txn_amount_total": "float",
+    "txn_velocity_1h": "float",
+    "linked_account_count": "int",
+    "account_age_days_min": "int",
+    "prior_suspicious_flags": "int",
+    "distance_km": "float",
+    "atm_density": "float",
+    "historical_hotspot_score": "float",
+    "hour_of_day": "int",
+    "day_of_week": "int",
+    "recency_hours": "float",
+    "withdrawal_count": "int",
+    "linked_depth": "int"
+  },
+  "defaults": {
+    "txn_amount_total": 0.0,
+    "txn_velocity_1h": 0.0,
+    "linked_account_count": 1.0,
+    "account_age_days_min": 0.0,
+    "prior_suspicious_flags": 0.0,
+    "distance_km": 0.0,
+    "atm_density": 0.0,
+    "historical_hotspot_score": 0.05,
+    "hour_of_day": 0.0,
+    "day_of_week": 0.0,
+    "recency_hours": 0.0,
+    "withdrawal_count": 0.0,
+    "linked_depth": 1.0
+  }
+}

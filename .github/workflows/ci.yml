@@ -1,0 +1,157 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "20"
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  # Gates 1-2: lint, typecheck. Cheapest and fastest signal first
+  # (devops/ci-cd.md §1) — a trivially broken PR fails in under a minute.
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "${{ env.NODE_VERSION }}", cache: "pnpm" }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run lint
+      - run: pnpm run typecheck
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ env.PYTHON_VERSION }}" }
+      - run: pip install -r apps/ml-service/requirements-dev.txt
+      - run: ruff check apps/ml-service
+      - run: mypy app
+        working-directory: apps/ml-service
+
+  # Gate 3: unit. Vitest + pytest -m unit. No network, no real clock.
+  unit:
+    needs: static
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "${{ env.NODE_VERSION }}", cache: "pnpm" }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter web run test:unit
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ env.PYTHON_VERSION }}" }
+      - run: pip install -r apps/ml-service/requirements-dev.txt
+      - run: pytest -m unit -q
+        working-directory: apps/ml-service
+
+  # Gate 4: migrations apply cleanly to an empty database (AC-P2-02, TC-P2-01).
+  migrations:
+    needs: static
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_USER: cyberpulse, POSTGRES_PASSWORD: cyberpulse, POSTGRES_DB: cyberpulse }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U cyberpulse" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "${{ env.NODE_VERSION }}", cache: "pnpm" }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @cyberpulse/db run migrate
+        env: { DATABASE_URL: "postgres://cyberpulse:cyberpulse@localhost:5432/cyberpulse" }
+
+  # The two non-bypassable gates (CLAUDE.md §Commands): signal_check proves
+  # every planted pattern is still detectable and blocks on any regression;
+  # pii_scan proves the corpus carries no personal-data shape. Neither
+  # accepts a skip flag here or anywhere else.
+  data-pipeline:
+    needs: static
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ env.PYTHON_VERSION }}" }
+      - run: pip install -r scripts/requirements.txt
+      - run: python3 scripts/generate-data/generator.py
+      - run: python3 scripts/evaluation/signal_check.py
+      - run: python3 scripts/evaluation/pii_scan.py
+      - name: upload corpus for downstream jobs
+        uses: actions/upload-artifact@v4
+        with: { name: generated-corpus, path: data/generated/, retention-days: 1 }
+
+  # Gate 6: dependency audit, secret scan, hard-coded-value scan, prohibited
+  # claims, terminology (devops/ci-cd.md §2.1).
+  security:
+    needs: static
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "${{ env.NODE_VERSION }}", cache: "pnpm" }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --audit-level=high
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ env.PYTHON_VERSION }}" }
+      - run: pip install pip-audit && pip-audit -r apps/ml-service/requirements.txt
+      - run: bash scripts/evaluation/no_hardcode_check.sh
+      - name: secret scan (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+
+  # Gate 5: real Postgres, real service composition — never mocked at this
+  # layer (RULE-testing.md).
+  integration:
+    needs: [unit, migrations, data-pipeline]
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_USER: cyberpulse, POSTGRES_PASSWORD: cyberpulse, POSTGRES_DB: cyberpulse }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U cyberpulse" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: "postgres://cyberpulse:cyberpulse@localhost:5432/cyberpulse"
+      ML_SERVICE_URL: "http://localhost:8000"
+      NEXT_PUBLIC_MAP_TILE_URL: "https://demotiles.maplibre.org/style.json"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "${{ env.NODE_VERSION }}", cache: "pnpm" }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @cyberpulse/db run migrate
+      - uses: actions/download-artifact@v4
+        with: { name: generated-corpus, path: data/generated/ }
+      - run: pnpm --filter @cyberpulse/db run seed
+      - run: pnpm --filter web run test:int
+
+  # Gate 7: build succeeds, route bundles stay within budget.
+  build:
+    needs: [integration, security]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "${{ env.NODE_VERSION }}", cache: "pnpm" }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter web run build
+        env:
+          DATABASE_URL: "postgres://cyberpulse:cyberpulse@localhost:5432/cyberpulse"
+          ML_SERVICE_URL: "http://localhost:8000"
+          NEXT_PUBLIC_MAP_TILE_URL: "https://demotiles.maplibre.org/style.json"
+      - run: docker build -f docker/Dockerfile.ml -t cyberpulse-ml:ci .
+      - run: docker build -f docker/Dockerfile.web -t cyberpulse-web:ci .

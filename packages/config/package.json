@@ -1,0 +1,12 @@
+{
+  "name": "@cyberpulse/config",
+  "private": true,
+  "version": "0.1.0",
+  "main": "index.js",
+  "exports": {
+    "./eslint": "./eslint.preset.mjs",
+    "./tailwind": "./tailwind.preset.js",
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./prettier": "./prettier.preset.js"
+  }
+}

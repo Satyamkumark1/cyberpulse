@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cyberpulse.ai/schemas/error.schema.json",
+  "title": "ErrorEnvelope",
+  "description": "The single error shape returned by every endpoint (ADR-020, architecture/api-design.md §1.2).",
+  "type": "object",
+  "properties": {
+    "error": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "VALIDATION_ERROR",
+            "UNAUTHORIZED",
+            "FORBIDDEN",
+            "NOT_FOUND",
+            "INVALID_TRANSITION",
+            "CONFLICT",
+            "RATE_LIMITED",
+            "INTERNAL_ERROR",
+            "ML_UNAVAILABLE",
+            "TIMEOUT"
+          ]
+        },
+        "message": { "type": "string", "minLength": 1 },
+        "field": { "type": "string" },
+        "requestId": { "type": "string", "minLength": 1 }
+      },
+      "required": ["code", "message", "requestId"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["error"],
+  "additionalProperties": false
+}

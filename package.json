@@ -1,0 +1,31 @@
+{
+  "name": "cyberpulse-ai",
+  "private": true,
+  "version": "0.1.0",
+  "engines": {
+    "node": ">=20 <21",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@9.12.0",
+  "scripts": {
+    "lint": "pnpm -r run lint",
+    "typecheck": "pnpm -r run typecheck",
+    "test:unit": "pnpm --filter web run test:unit",
+    "test:int": "pnpm --filter web run test:int",
+    "test:e2e": "pnpm --filter web run test:e2e",
+    "generate:zod": "pnpm --filter @cyberpulse/shared run generate:zod",
+    "generate:pydantic": "pnpm --filter @cyberpulse/shared run generate:pydantic",
+    "generate:data": "python3 scripts/generate-data/generator.py",
+    "signal:check": "python3 scripts/evaluation/signal_check.py",
+    "pii:scan": "python3 scripts/evaluation/pii_scan.py",
+    "no-hardcode:check": "bash scripts/evaluation/no_hardcode_check.sh",
+    "db:migrate": "pnpm --filter @cyberpulse/db run migrate",
+    "db:seed": "pnpm --filter @cyberpulse/db run seed",
+    "db:generate": "pnpm --filter @cyberpulse/db run generate"
+  },
+  "pnpm": {
+    "overrides": {
+      "postcss": ">=8.5.18"
+    }
+  }
+}

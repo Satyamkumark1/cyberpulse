@@ -1,0 +1,31 @@
+import { z } from "zod";
+
+// devops/environments.md §6 + RULE-deployment.md: validated at startup by a
+// Zod schema in every environment. A missing or malformed variable fails the
+// boot, not the first request that needs it. No secret carries a
+// NEXT_PUBLIC_ prefix (RULE-security.md).
+const EnvSchema = z.object({
+  DATABASE_URL: z.string().url(),
+  ML_SERVICE_URL: z.string().url(),
+  NEXT_PUBLIC_MAP_TILE_URL: z.string().url(),
+  NEXT_PUBLIC_APP_NAME: z.string().default("CyberPulse AI"),
+  NEXT_PUBLIC_DEMO_MODE: z.enum(["true", "false"]).default("true"),
+  NEXT_PUBLIC_ANALYTICS_ENABLED: z.enum(["true", "false"]).default("true"),
+  LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+  APP_VERSION: z.string().default("0.1.0"),
+  DATA_SEED: z.coerce.number().int().default(26184),
+});
+
+const parsed = EnvSchema.safeParse(process.env);
+
+if (!parsed.success) {
+  // Thrown at module load — the process cannot boot with a missing or
+  // malformed variable (RULE-deployment.md §Configuration).
+  throw new Error(`Invalid environment configuration: ${parsed.error.message}`);
+}
+
+export const env = {
+  ...parsed.data,
+  NEXT_PUBLIC_DEMO_MODE: parsed.data.NEXT_PUBLIC_DEMO_MODE === "true",
+  NEXT_PUBLIC_ANALYTICS_ENABLED: parsed.data.NEXT_PUBLIC_ANALYTICS_ENABLED === "true",
+};
