@@ -374,6 +374,33 @@ Progress ticks reflect actual pipeline stages reported by the API, not a timed a
 
 ---
 
+## W-11 — Scam Shield (FEAT-17, `/safety`)
+
+Phone-first (390 px), the one surface designed for members of the public rather than officers. Layout only; every value on these screens comes from the citizen's own input or the API.
+
+```
+┌──────────────────────────────────┐
+│ [shield] Scam Shield  EN|हिं [BADGE]│  navy header
+│ Home · Is this a scam? · Verify …│  scrollable tab row
+├──────────────────────────────────┤
+│ ⓘ Report notice (fixed string)   │  amber strip, every route
+├──────────────────────────────────┤
+│ H1 + one-line lede               │
+│ [card] Is this a scam?           │  home: four cards,
+│ [card] Verify before you pay     │  "I already paid" tinted red
+│ [card] I already paid            │
+│ [card] Track my report           │
+│ Mule line                        │
+├──────────────────────────────────┤
+│ Already paid? [Call 1930]        │  sticky red bar (not on Report Now)
+│ Disclaimer (fixed string)        │
+└──────────────────────────────────┘
+```
+
+**Check:** scenario pills (radio group) → four checkbox statements → verdict box (colour + icon + text) → reasons, steps, sources, mule line. **Verify:** three stacked forms, each label + hint + input + button + inline result. **Report Now:** step pills; step 1 red 1930 block + checklist; step 2 three fields with a no-personal-data note; step 3 complaint ID + tracking code in monospace, save warning, copy, track. **Status:** ID + code form; four-stage vertical timeline; status note. At ≥ 1024 px Check and Status split into two columns.
+
+---
+
 ## Responsive Behaviour Summary
 
 | Breakpoint | Change |

@@ -8,7 +8,7 @@ export type VictimFlowNode = Node<VictimNodeData, "VICTIM">;
 // never colour alone (AC-004-02).
 export function VictimNode({ data, selected }: NodeProps<VictimFlowNode>) {
   return (
-    <div className={`w-44 rounded-sm border-2 bg-white px-3 py-2 shadow-sm ${selected ? "border-sih-blue-600" : "border-slate-400"}`}>
+    <div className={`w-44 rounded-lg border-2 bg-white px-3 py-2.5 shadow-sm transition-shadow ${selected ? "border-sih-blue-600 shadow-md ring-4 ring-sih-blue-100" : "border-sih-blue-600/60"}`}>
       <Handle type="source" position={Position.Right} />
       <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
         <span aria-hidden="true">▣</span> Victim

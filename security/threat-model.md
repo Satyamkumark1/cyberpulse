@@ -130,6 +130,18 @@ STRIDE does not cover these, and for this product they matter more than most of 
 
 **Controls.** Warm-up ping; health polling; T−30 rehearsal; local Docker stack standby; degraded mode that is explicit and numberless.
 
+### DT-6 · Prototype mistaken for a real reporting channel (FEAT-17)
+
+**Threat.** A real victim finds `/safety`, files a report, and believes police or their bank have been told — losing the first hour in which the money could be held.
+
+**Controls.** Every `/safety` route carries the fixed notice that the prototype does not forward reports; Report Now puts 1930 before the form; the confirmation repeats it. Asserted by TC-SAFE-035.
+
+### DT-7 · Abuse of the public write (FEAT-17)
+
+**Threat.** `POST /api/citizen/reports` is the only write reachable without choosing a role: spam complaints, attempts to smuggle personal data or server-derived fields, and guessing other citizens' tracking codes.
+
+**Controls.** 5/min per IP; strict schema with no free-text field; derived fields rejected with 400; all rows `DEMO`-origin and cleared by reset; 80-bit tracking codes stored as SHA-256 hashes and never in URLs; wrong code ≡ unknown ID. TC-SAFE-011 … TC-SAFE-017.
+
 ---
 
 ## 5. Attack Trees
@@ -181,6 +193,8 @@ Goal: BANK role reads an unrelated complaint
 | SR-10 | Automation bias (DT-4) | Medium | High | **High** | Mitigate by design; residual risk accepted and stated |
 | SR-11 | Demonstration failure (DT-5) | Medium | High | **High** | Mitigate — warm-up, rehearsal, local fallback |
 | SR-12 | No penetration test | — | — | Medium | **Accept** — declared limitation; V1 remedy |
+| SR-13 | Prototype mistaken for a real reporting channel (DT-6) | Medium | High | **High** | Mitigate — fixed notice on every citizen route, 1930 first |
+| SR-14 | Public write abuse (DT-7) | Medium | Medium | Medium | Mitigate — rate limit, strict schema, hashed codes, DEMO origin |
 
 ---
 

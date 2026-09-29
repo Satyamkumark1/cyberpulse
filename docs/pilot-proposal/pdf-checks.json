@@ -1,0 +1,18 @@
+{
+  "pages": 6,
+  "page_size": "A4 portrait",
+  "fonts": "Embedded Arial regular and bold",
+  "dashboard": "Illustrative vector UI; synthetic values; not a screenshot",
+  "text_bounds_issues": [],
+  "external_source_links": 3,
+  "pdf_bytes": 864619,
+  "team": "Quartz visailz",
+  "institution_as_supplied": "Maharishi University of Technology, Noida",
+  "pdf_sha256": "ab457f541dec49382dc195014fb7002950b3c55c669998655a29ef0929ebf2bd",
+  "structural_checks": "passed: six pages, two embedded fonts, three source links, expected content present",
+  "rendered_page_review": "passed: all six pages; pages 3 and 5 reinspected after final changes",
+  "manual_review": {
+    "pdf_sha256": "ab457f541dec49382dc195014fb7002950b3c55c669998655a29ef0929ebf2bd",
+    "status": "passed: all six pages; pages 3 and 5 reinspected after final changes"
+  }
+}

@@ -14,6 +14,7 @@ const QuerySchema = z
   .object({
     depth: z.coerce.number().int().min(1).max(TRAVERSAL_MAX_DEPTH).default(TRAVERSAL_DEPTH_DEFAULT),
     maxNodes: z.coerce.number().int().min(1).max(TRAVERSAL_MAX_NODES_CAP).default(TRAVERSAL_MAX_NODES_DEFAULT),
+    view: z.enum(["complaint", "related"]).default("complaint"),
   })
   .strict();
 
@@ -25,7 +26,7 @@ export const GET = withRateLimit<[{ params: Promise<{ id: string }> }]>(RATE_LIM
       const url = new URL(req.url);
       const input = QuerySchema.parse(Object.fromEntries(url.searchParams));
       const ctx: RequestContext = { role: resolveRole(req), requestId, origin: "USER" };
-      const result = await getNetwork(id, input.depth, input.maxNodes, ctx);
+      const result = await getNetwork(id, input.depth, input.maxNodes, ctx, input.view);
       return Response.json(result, { status: 200, headers: { "x-request-id": requestId } });
     } catch (e) {
       return toErrorResponse(e, requestId);

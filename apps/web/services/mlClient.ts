@@ -26,7 +26,15 @@ export async function callPredict(
     if (e instanceof TypeError) {
       // fetch's own network-level failure (connection refused/reset) —
       // the one case worth a single retry.
-      return await doCallPredict(payload, requestId);
+      try {
+        return await doCallPredict(payload, requestId);
+      } catch (retryError) {
+        // Still unreachable: a raw TypeError escaping here would serialise
+        // as INTERNAL_ERROR (500) instead of the documented degraded path
+        // (AC-P7-08) — classify it rather than let it through unclassified.
+        if (retryError instanceof TypeError) throw new MlUnavailableError();
+        throw retryError;
+      }
     }
     throw e;
   }

@@ -1,16 +1,18 @@
 {
   "files": {
     "accounts.csv": "bf264e80a33c86c9de82d450e8e8b400a8675a5462ef75317ebb9e9f71462535",
-    "atms.csv": "42dba859d95646718ff8a59ee007683b351b13b0cc00b1d3d9fbaa732fbe1bf1",
-    "complaints.csv": "9f57bb88133f61a1e53e5296c58a201736301f4e8c3dd023c345c17cadf46a2f",
-    "transactions.csv": "cf3b2613bf28b630fc1b7bd4d2ca14e8e2a6e7fc97fdd567ae012bf90f423f13",
-    "withdrawals.csv": "8067ab9d03387869262e324d193f8d934c7f502b3f38b377ab8111da69c8940b"
+    "atms.csv": "358372f0b24110e120c7ea46ca1160f8eaaf66504ae99671a641da9205eb0827",
+    "complaints.csv": "3d63c9f0bf7c36103c3e54007f03e60bd0404bf70db2172008592f6e6b1b5f22",
+    "guard_posts.csv": "93511c96667ae1bded917a0371a5af3a51d87ad334f76b83eb96b7a64ec496e3",
+    "transactions.csv": "3fa69d71fbad357cfc1ab9b4770c3a6cfaa8259eb594ceb5daeb492c6195dfa9",
+    "withdrawals.csv": "37dd70fe3f05994de0e9a707fa67c4b7ebe7d38f0e13fd76a03243c68b2eb7cd"
   },
-  "generatedAt": "2026-09-15T18:13:52.093223+00:00",
+  "generatedAt": "2026-09-18T07:01:42.453378+00:00",
   "rowCounts": {
     "accounts": 12000,
     "atms": 520,
     "complaints": 500,
+    "guard_posts": 1068,
     "transactions": 60000,
     "withdrawals": 2400
   },

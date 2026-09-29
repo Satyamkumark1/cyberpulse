@@ -1,0 +1,44 @@
+# Local dependencies and build output
+node_modules
+**/node_modules
+.next
+**/.next
+dist
+**/dist
+coverage
+**/coverage
+
+# Repository metadata and local tooling
+.git
+.gitignore
+.codex
+.agents
+.claude
+.vscode
+.idea
+
+# Python caches and virtual environments
+__pycache__
+**/__pycache__
+*.py[cod]
+.venv
+venv
+
+# Test-only and documentation content is not needed in runtime images
+**/tests
+**/*.test.*
+docs
+product
+ux
+architecture
+ai
+engineering
+security
+test-cases
+project-management
+implementation
+diagrams
+
+# Generated corpora and local logs
+data/generated
+*.log

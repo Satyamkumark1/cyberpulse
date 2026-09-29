@@ -22,6 +22,8 @@ CyberPulse AI is delivered in eight phases. The phase names below are authoritat
 | P6 | Reporting, QA, Security & Performance | Reports, settings, full quality gates | FEAT-13, rest of FEAT-15 |
 | P7 | Demo Mode, Deployment & Production Readiness | `/demo`, containers, deployment, observability | FEAT-14 |
 | P8 | Launch, Rehearsal & Post-Launch | Rehearsed demo, smoke suite, retrospective | — |
+| P9 | Scam Shield — Citizen Safety (DEC-013) | Public `/safety` section in English and Hindi; citizen reports feed the officer queue | FEAT-17 |
+| P10 | Hold Advice, Hold-Rule Replay, Scam Shield additions (DEC-014, planned) | Disputed-amount hold advice on the money trail; RBI proposed-hold replay; QR X-ray and mule-recruitment check | FEAT-18, FEAT-19, FEAT-17 |
 
 ### 1.1 Note on phase ordering
 
@@ -45,7 +47,9 @@ Effort is expressed in person-days for a six-person team. Calendar assumes a thr
 | P6 | 12 | Week 3, day 7 – finale prep | All Critical/High test cases pass; metric gates met |
 | P7 | 8 | Finale, hours 0–14 | `/demo` runs end-to-end; deployed URLs live |
 | P8 | 4 | Finale, hours 14–24 | Two timed rehearsals ≤ 180 s; smoke suite green |
-| **Total** | **88** | | |
+| P9 | 10.5 | Next hackathon, two weeks, one developer | `implementation/phase-9.md` §16 |
+| P10 | 10.5 | Planned, two weeks, one developer | `implementation/phase-10.md` §16 |
+| **Total** | **109** | | |
 
 Buffer: the remaining finale hours are reserved for defect burn-down and are not allocated to new scope.
 

@@ -86,7 +86,20 @@
     "modelVersion": { "type": "string" },
     "featureSchemaVersion": { "type": "string" },
     "inferenceMs": { "type": ["integer", "null"], "minimum": 0 },
-    "createdAt": { "type": "string", "format": "date-time" }
+    "createdAt": { "type": "string", "format": "date-time" },
+    "pipelineStages": {
+      "type": ["array", "null"],
+      "description": "Per-stage inference timings, present only on a freshly-computed prediction (never on one re-served from `predictions`) — what /demo's step 3 progress reads (architecture/api-design.md ML-001, AC-P7-04). Not persisted.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "durationMs": { "type": "integer", "minimum": 0 }
+        },
+        "required": ["name", "durationMs"],
+        "additionalProperties": false
+      }
+    }
   },
   "required": [
     "predictionRef", "complaintId", "riskScore", "riskLevel", "confidence",

@@ -4,10 +4,10 @@ import type { ApiGraphNode, AtmNodeData, MuleAccountNodeData, VictimNodeData } f
 // AC-004-03…05: each node type's detail panel shows its documented fields.
 export function NodeDetailPanel({ node, onClose }: { node: ApiGraphNode; onClose: () => void }) {
   return (
-    <aside aria-label="Node detail" className="w-64 shrink-0 rounded-sm border border-slate-200 bg-white p-3 text-sm">
+    <aside aria-label="Node detail" className="w-72 shrink-0 rounded-lg border border-slate-200 bg-white p-4 text-sm">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-slate-800">
-          {node.type === "VICTIM" ? "Victim" : node.type === "MULE_ACCOUNT" ? "Mule Account" : "ATM"}
+          {node.type === "VICTIM" ? "Victim" : node.type === "MULE_ACCOUNT" ? "Linked Account" : "ATM"}
         </h3>
         <button
           type="button"
@@ -46,7 +46,7 @@ function MuleAccountDetail({ data }: { data: MuleAccountNodeData }) {
         <Row label="Opened" value={formatTimestampIst(data.openedAt)} />
         <Row label="Status" value={data.status} />
       </dl>
-      <p className="mt-3 text-xs text-slate-500">Risk indicator. Not a finding about any person.</p>
+      <p className="mt-3 text-xs text-slate-500">Synthetic account-risk indicator, not a cash-out prediction or a confirmed mule classification.</p>
     </>
   );
 }
@@ -64,9 +64,9 @@ function AtmDetail({ data }: { data: AtmNodeData }) {
         <p className="mt-1 text-xs text-slate-500">No withdrawal observed.</p>
       ) : (
         <ul className="mt-1 space-y-1">
-          {data.withdrawals.map((w) => (
-            <li key={`${w.timestamp}-${w.amountPaise}`} className="flex justify-between gap-2 text-xs text-slate-600">
-              <span>{formatTimestampIst(w.timestamp)}</span>
+          {data.withdrawals.map((w, index) => (
+            <li key={`${w.timestamp}-${w.amountPaise}-${index}`} className="flex justify-between gap-2 text-xs text-slate-600">
+              <span>{formatTimestampIst(w.timestamp)}<span className="block">{w.association === "RELATED" ? "Related activity — attribution uncertain" : "Complaint-linked record"}</span></span>
               <span>{formatPaise(w.amountPaise)}</span>
             </li>
           ))}

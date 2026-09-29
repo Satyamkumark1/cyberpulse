@@ -25,7 +25,9 @@ fi
 
 echo
 echo "=== prohibited-claims scan (CLAUDE.md §Terminology) ==="
-PROHIBITED_PATTERN='\bofficial\b|\bendorsed\b|guaranteed recovery|\bguaranteed\b'
+# FEAT-17 serves Hindi too (apps/web/lib/safety/copy.ts); the same claims are
+# prohibited in either language: आधिकारिक = official, गारंटी = guarantee.
+PROHIBITED_PATTERN='\bofficial\b|\bendorsed\b|guaranteed recovery|\bguaranteed\b|आधिकारिक|गारंटी'
 if grep -rEni "${GREP_EXCLUDES[@]}" "$PROHIBITED_PATTERN" "${SCAN_DIRS[@]}" 2>/dev/null; then
   echo "[FAIL] prohibited claim found in source"
   fail=1
@@ -35,7 +37,8 @@ fi
 
 echo
 echo "=== terminology scan (CLAUDE.md §Terminology) ==="
-TERMINOLOGY_PATTERN='\bcriminal(s)?\b|\bfraudster(s)?\b|\boffender(s)?\b|\bguilty\b|\baccused\b|\bculprit(s)?\b|confirmed location'
+# Hindi: अपराधी = criminal, धोखेबाज = fraudster, आरोपी = accused, दोषी = guilty.
+TERMINOLOGY_PATTERN='\bcriminal(s)?\b|\bfraudster(s)?\b|\boffender(s)?\b|\bguilty\b|\baccused\b|\bculprit(s)?\b|confirmed location|अपराधी|धोखेबाज|आरोपी|दोषी'
 if grep -rEni "${GREP_EXCLUDES[@]}" "$TERMINOLOGY_PATTERN" "${SCAN_DIRS[@]}" 2>/dev/null; then
   echo "[FAIL] prohibited terminology found in source"
   fail=1

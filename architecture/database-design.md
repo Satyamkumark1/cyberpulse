@@ -43,6 +43,7 @@
 | 14 | `settings` | Single-row platform configuration | 1 | Mutates |
 | 15 | `audit_events` | Privileged action record | grows | Append-only, immutable |
 | 16 | `analytics_events` | Product telemetry | grows | Append-only |
+| 17 | `citizen_reports` | Hash of a citizen report's tracking code (FEAT-17) | grows | Insert-only; cleared with its complaint by demo reset |
 
 Tables 14–16 extend the thirteen named in the source specification. `settings` is required by FR-22, `audit_events` by FR-21/SR-03, and `analytics_events` by the metric definitions in `product/success-metrics.md`. Each is justified rather than assumed.
 
@@ -65,7 +66,7 @@ CREATE TYPE alert_severity AS ENUM ('LOW','MEDIUM','HIGH');
 CREATE TYPE recipient_kind AS ENUM ('LEA','BANK','I4C');
 CREATE TYPE investigation_status AS ENUM ('NEW','ANALYZING','UNDER_REVIEW','ALERT_SENT','MONITORING','RESOLVED');
 CREATE TYPE priority_level AS ENUM ('LOW','MEDIUM','HIGH');
-CREATE TYPE actor_role     AS ENUM ('LEA','BANK','ADMIN');
+CREATE TYPE actor_role     AS ENUM ('LEA','BANK','ADMIN','GUARD','I4C','CITIZEN');
 CREATE TYPE record_origin  AS ENUM ('SEED','USER','DEMO');
 CREATE TYPE atm_status     AS ENUM ('ACTIVE','INACTIVE','MAINTENANCE');
 ```
@@ -162,9 +163,32 @@ There is **no name, no address, no contact column**, by design (FR-01.7, CR-01).
 | `bank_name` | text | NOT NULL |
 | `latitude` / `longitude` | double precision | NOT NULL, India-bounds CHECK |
 | `h3_r8` / `h3_r9` | text | NOT NULL — r8 for hotspot cells, r9 for density |
+| `locality` | text | nullable — the zone inside the city ("T Nagar" within Chennai) |
 | `city` / `district` / `state` | text | NOT NULL |
 | `status` | atm_status | NOT NULL DEFAULT 'ACTIVE' |
 | `created_at` | timestamptz | NOT NULL DEFAULT now() |
+
+### 4.5a `guard_posts`
+
+A staffed duty **position** at one ATM — not a person. The table has nowhere to
+put a name, phone number or any other personal identifier, which is the same
+rule `accounts` follows: FR-01.7 and `pii_scan.py` reject those shapes in the
+corpus and TC-SEC-022 introspects the schema for them. Who stands at a post on
+a given day is the operating bank's record, never this prototype's.
+
+| Column | Type | Constraints |
+|---|---|---|
+| `id` | bigserial | PK |
+| `post_id` | text | UNIQUE NOT NULL, format `GRD-[0-9]{5}` |
+| `atm_id` | bigint | NOT NULL FK → `atms.id` |
+| `shift_start_hour_ist` | integer | NOT NULL, CHECK 0–23 |
+| `shift_end_hour_ist` | integer | NOT NULL, CHECK 0–23, CHECK ≠ start |
+| `origin` | record_origin | NOT NULL DEFAULT 'SEED' |
+| `created_at` | timestamptz | NOT NULL DEFAULT now() |
+
+UNIQUE `(atm_id, shift_start_hour_ist)` — one post per ATM per shift start.
+Index `idx_guard_posts_atm_id` serves `guardPostService.listForCell`, the posts
+covering the ATMs inside a predicted hotspot cell.
 
 ### 4.6 `hotspots`
 
@@ -307,6 +331,14 @@ No update or delete path exists in application code. A database role used by the
 ### 4.16 `analytics_events`
 
 `id`, `event` text NOT NULL, `session_id` uuid NOT NULL, `role` actor_role NOT NULL, `route` text NOT NULL, `props` jsonb NOT NULL DEFAULT '{}', `app_version` text, `model_version` text, `occurred_at` timestamptz NOT NULL DEFAULT now(). No identity column exists (see `product/product-analytics.md` §6).
+
+### 4.17 `citizen_reports` (FEAT-17, ADR-022, migration 0006)
+
+`complaint_id` bigint PRIMARY KEY REFERENCES complaints(id) ON DELETE CASCADE, `tracking_hash` text NOT NULL with `CHECK (tracking_hash ~ '^[0-9a-f]{64}$')`, `created_at` timestamptz NOT NULL DEFAULT now().
+
+A citizen report is a `complaints` row (`origin = 'DEMO'`) plus this row, nothing more. The table holds a foreign key, a SHA-256 hash and a timestamp — there is no column in which a name, phone or contact detail could be stored. The primary key is the only index; the one query (status lookup by complaint) joins on it.
+
+Citizen complaint IDs come from `citizen_complaint_seq` (`START 90000 MINVALUE 90000 MAXVALUE 99999 NO CYCLE`), rendered `'C-' || nextval(...)`, so they satisfy `complaints_complaint_id_format` and cannot collide with the seed corpus, which tops out at `C-10284`. Demo reset never rewinds the sequence.
 
 ---
 

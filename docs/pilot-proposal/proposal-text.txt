@@ -1,0 +1,254 @@
+PAGE 1: Overview
+CYBERPULSE AI
+PILOT EVALUATION PROPOSAL
+Quartz visailz  /  18 September 2026
+OVERVIEW   •   01 / 06
+PROPOSED PILOT  •  SYNTHETIC PROTOTYPE
+CyberPulse AI
+Anticipate the next cash-out.
+Predictive location and time-window forecasting for cyber-fraud
+investigations.
+THE PILOT QUESTION
+Can ranked cash-out areas and time windows help
+investigators prioritise leads faster than
+historical-hotspot methods?
+WHERE
+Candidate geographic
+areas
+WHEN
+2–4-hour estimated
+windows
+WHY
+Model feature
+explanations
+Current model scope: H3 resolution 8 areas; a 24-hour horizon from the complaint timestamp. Forecasts are leads for
+review, not confirmed withdrawal addresses.
+REQUESTED NEXT STEP
+A technical review with RBIH and a scoped, authorised data evaluation with suitable
+institutional partners.
+Quartz visailz
+Maharishi University of Technology, Noida
+18 September 2026  •  Problem Statement 26184  •  Revision 2
+
+PAGE 2: Operational fit
+CYBERPULSE AI
+PILOT EVALUATION PROPOSAL
+Quartz visailz  /  18 September 2026
+OPERATIONAL FIT   •   02 / 06
+01 / ECOSYSTEM ALIGNMENT
+Where CyberPulse fits
+A proposed decision-support step using authorised case records. Existing bank coordination and
+fund-protection efforts continue in parallel. [1, 2]
+PROPOSED WORKFLOW  •  NO LIVE INTEGRATION
+Complaint + linked records
+Complaint details, permitted transaction links
+and prior withdrawal outcomes.
+Bank coordination
+Existing channels for tracing and
+protecting available funds.
+in parallel
+CyberPulse analysis
+Rank candidate areas; estimate a time window;
+explain model influences.
+permitted records
+Officer review
+Check evidence, freshness and uncertainty;
+prioritise follow-up.
+ranked leads
+Authorised action
+Use existing agency channels. Record
+decisions and outcomes.
+decision
+PROPOSED CONTRIBUTION
+Help an investigator choose which lead to examine next. An area forecast does not identify an accused
+person or justify sending police to every ATM.
+RBIH’s MuleHunter.ai focuses on mule-account detection. The May 2026 I4C–RBIH MoU supports intelligence sharing.
+CyberPulse proposes complementary cash-out forecasting; access to those systems is not assumed. [2, 3]
+
+PAGE 3: Product walkthrough
+CYBERPULSE AI
+PILOT EVALUATION PROPOSAL
+Quartz visailz  /  18 September 2026
+PRODUCT WALKTHROUGH   •   03 / 06
+02 / INVESTIGATOR EXPERIENCE
+From forecast to review
+Illustrative interface composition based on the current map workflow. All scores, locations and ATM markers
+below are synthetic examples.
+CyberPulse
+AI / WORKSPACE
+Dashboard
+Complaints
+Money trail
+Risk map
+Alerts
+Investigations
+SYNTHETIC
+Geographic intelligence
+UI ILLUSTRATION
+Search locality, PIN code, or coordinates
+SCHEMATIC • NOT GEOREFERENCED
+1
+2
+3
+ATM A
+ATM B
+ATM C
+Dashed boundary = candidate area, not exact address
+Area A
+Delhi • illustrative example
+MODEL SCORE
+0.67
+example only
+ESTIMATED WINDOW
+12:00–14:00 IST
+MODEL INFLUENCES
+Transaction velocity
+Transfer depth
+Prior hotspot activity
+Prepare alert for review
+1
+2
+3
+4
+Figure 2. Annotated UI illustration, not a captured live session or an evaluated model output. ATM letters and the road layout are fictional.
+No map-provider data is used.
+1
+Area, not address
+A candidate hexagon narrows the search. Its centre pin
+is a reference coordinate.
+2
+ATM and PIN context
+Verify ATM records separately. A locality or PIN lookup
+does not locate a suspect.
+3
+Time and explanation
+Show the estimated window and influential features;
+retain uncertainty.
+4
+Human decision
+Review before action. The current prototype records
+alerts internally; external delivery is a pilot requirement.
+
+PAGE 4: Evidence and readiness
+CYBERPULSE AI
+PILOT EVALUATION PROPOSAL
+Quartz visailz  /  18 September 2026
+EVIDENCE AND READINESS   •   04 / 06
+03 / TECHNICAL CREDIBILITY
+What exists. What needs proof.
+The prototype demonstrates the workflow on synthetic data. Pilot readiness requires verified data access,
+stronger controls and evaluation of the full serving pipeline.
+WORKING PROTOTYPE
+REQUIRED BEFORE REAL-DATA USE
+Complaint and money-trail views
+H3 candidate-area ranking
+XGBoost scores + temporal estimates
+SHAP feature explanations
+Internal alert records and audit events
+Authorised bank / case-data access
+Verified identity and access isolation
+Point-in-time replay and leakage checks
+Missing-link / stale-data qualification
+Verified alert delivery and outcome capture
+RECORDED SYNTHETIC BASELINE COMPARISON
+Top-3 cash-out cell hit rate • model card dated 16 September 2026
+XGBoost model
+86.9%
+Historical hotspot
+89.7%
+Logistic regression
+89.7%
+The recorded XGBoost result does not exceed the simpler baselines. These numbers recover planted synthetic
+patterns; they are not field accuracy or proof of operational value. [4]
+EVALUATE THE PIPELINE THAT OFFICERS WILL SEE
+Serving combines model output with other ranking terms. Evaluate that final ranking, its candidate generator and
+its time window together. Enforce a prediction cutoff on historical aggregates before replay; the current hotspot
+query does not yet apply one. [5]
+
+PAGE 5: Pilot design
+CYBERPULSE AI
+PILOT EVALUATION PROPOSAL
+Quartz visailz  /  18 September 2026
+PILOT DESIGN   •   05 / 06
+04 / EVALUATION PLAN
+An eight-week gated pilot
+Proposed eight-week evaluation after data-access approval. Timing, cohort size, partner ownership and
+numerical thresholds must be agreed before evaluation begins.
+01
+Readiness
+Weeks 1–2
+Approve data scope; verify identity, hosting, retention
+and prediction cutoffs.
+Gate: replay-safe dataset
+02
+Historical replay
+Weeks 3–4
+Use time-ordered held-out cases. Compare the full
+pipeline with simple baselines.
+Gate: agreed offline targets
+03
+Shadow testing
+Weeks 5–7
+Log predictions and officer review without automated
+operational action.
+Gate: useful, timely leads
+04
+Joint review
+Week 8
+Assess benefit, alert burden and failures. Decide
+whether to extend or stop.
+Gate: documented decision
+PILOT SCORECARD
+MEASURE
+WHAT THE PILOT MUST ESTABLISH
+Candidate recall
+True cell included anywhere in the candidate set.
+Top-3 / joint hit rate
+Location ranking and location-plus-time success vs baseline.
+Delivered lead time
+Withdrawal time minus actual investigator availability time.
+Investigator workload
+False alerts per case/day and time spent reviewing leads.
+Data / outcome coverage
+Missing links, stale inputs and unobservable cash-out outcomes.
+Pre-register thresholds and an alert budget; report uncertainty and all eligible cases, including candidate misses.
+Historical replay estimates potential lead time. Only prospective testing measures actual delivery and operational
+usefulness.
+
+PAGE 6: Data, ask and sources
+CYBERPULSE AI
+PILOT EVALUATION PROPOSAL
+Quartz visailz  /  18 September 2026
+DATA, ASK AND SOURCES   •   06 / 06
+05 / PARTNERSHIP REQUEST
+A bounded, reviewable next step
+Request a technical review with RBIH and introductions to suitable bank and law-enforcement partners for a
+controlled evaluation. No institutional endorsement is implied.
+MINIMUM DATA AND GOVERNANCE AGREEMENT
+Request only the approved fields needed for evaluation: pseudonymous case/account links, transaction amounts
+and event/availability times, complaint timestamps, historical ATM coordinates, and linked withdrawal outcomes.
+Account identifiers must remain joinable under the agreed pseudonymisation scheme.
+Before access: agree the institutional host, authorised users, isolation controls, audit logging, retention/deletion
+terms and outcome ownership. Missing outcomes remain unknown; they must not be treated as successful
+predictions or confirmed negatives.
+SUCCESS MUST BE OBSERVABLE
+Proceed only if the agreed evaluation shows useful improvement at an acceptable review burden.
+Higher recovery or arrest rates remain hypotheses for a later controlled operational study.
+SOURCES AND IMPLEMENTATION EVIDENCE
+[1]
+MHA / PIB, 17 March 2026 — CFCFRMS context.
+Over Rs. 8,690 crore saved as of 31 January 2026; not a CyberPulse result.
+[2]
+MHA / PIB, 12 May 2026 — I4C–RBIH MoU.
+Supports mule-account intelligence sharing and fraud-risk collaboration.
+[3]
+RBIH — MuleHunter.ai project overview.
+Existing mule-account detection capability; referenced for operational fit.
+[4]
+CyberPulse model_card.json — 16 September 2026.
+apps/ml-service/models/model_card.json; synthetic data, seed 26184.
+[5]
+CyberPulse implementation review — 18 September 2026.
+hotspotService.ts, alertService.ts, services/lib/auth.ts and engine/temporal.py.
+Prepared by Quartz visailz
+Maharishi University of Technology, Noida

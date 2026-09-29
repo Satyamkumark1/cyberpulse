@@ -11,6 +11,6 @@ const MoneyTrailGraph = dynamic(() => import("./MoneyTrailGraph").then((m) => m.
   loading: () => <StatePanel state="loading" title="Loading money trail" message="Tracing the transaction chain." />,
 });
 
-export function MoneyTrailGraphLazy({ complaintId }: { complaintId: string }) {
-  return <MoneyTrailGraph complaintId={complaintId} />;
+export function MoneyTrailGraphLazy({ complaintId, maxNodes, presentation }: { complaintId: string; maxNodes?: number; presentation?: "default" | "demo" }) {
+  return <MoneyTrailGraph complaintId={complaintId} {...(maxNodes ? { maxNodes } : {})} {...(presentation ? { presentation } : {})} />;
 }

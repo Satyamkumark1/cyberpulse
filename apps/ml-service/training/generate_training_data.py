@@ -163,7 +163,6 @@ def build_dataset(conn: psycopg.Connection) -> pd.DataFrame:
         t["complaints"], t["transactions"], t["accounts"], t["withdrawals"], t["atms"], t["risk_txns"]
     )
 
-    withdrawal_counts_by_cell = withdrawals["h3_r8"].value_counts().to_dict()
     atm_counts_by_cell = atms["h3_r8"].value_counts().to_dict()
     location_by_cell = (
         atms.drop_duplicates(subset=["h3_r8"], keep="first")
@@ -171,11 +170,6 @@ def build_dataset(conn: psycopg.Connection) -> pd.DataFrame:
         .apply(tuple, axis=1)
         .to_dict()
     )
-    withdrawals_by_state = withdrawals.merge(atms[["id", "state"]], left_on="atm_id", right_on="id", how="inner")
-    top_cells_by_state = {
-        state: group["h3_r8"].value_counts().index.tolist()
-        for state, group in withdrawals_by_state.groupby("state")
-    }
     true_cells_by_complaint = withdrawals.dropna(subset=["complaint_id"]).groupby("complaint_id")["h3_r8"].apply(set)
     true_withdrawal_time_by_complaint = (
         withdrawals.dropna(subset=["complaint_id"]).groupby("complaint_id")["timestamp"].min()
@@ -238,8 +232,21 @@ def build_dataset(conn: psycopg.Connection) -> pd.DataFrame:
             if withdrawal_time is not None
             else np.nan
         )
+        withdrawals_before_complaint = withdrawals[withdrawals["timestamp"] < complaint.complaint_timestamp]
+        withdrawal_counts_by_cell = withdrawals_before_complaint["h3_r8"].value_counts().to_dict()
+        withdrawals_by_state = withdrawals_before_complaint.merge(
+            atms[["id", "state"]], left_on="atm_id", right_on="id", how="inner"
+        )
+        top_cells_by_state = {
+            state: group["h3_r8"].value_counts().index.tolist()
+            for state, group in withdrawals_by_state.groupby("state")
+        }
         candidates = _generate_candidate_cells(
             complaint.victim_h3_r8, complaint.city, complaint.district, complaint.state,
+            # Historical features must be point-in-time: a complaint cannot
+            # use withdrawals that happened after it was filed. Using the full
+            # table here leaked future outcomes into both candidate generation
+            # and the model's Historical Hotspot explanation.
             withdrawal_counts_by_cell, atm_counts_by_cell, top_cells_by_state, location_by_cell,
         )
         split = split_for(complaint.complaint_id)

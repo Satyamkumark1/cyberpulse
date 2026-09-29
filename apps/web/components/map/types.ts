@@ -22,6 +22,8 @@ export interface HotspotDetail extends HotspotListItem {
   nearbyAtms: { atmId: string; bankName: string; distance: number }[];
   topFactors: { name: string; contribution: number; direction: "INCREASES" | "REDUCES" }[];
   relatedComplaints: { complaintId: string; fraudType: string; amountPaise: number }[];
+  predictionRef?: string | null;
+  estimatedExposurePaise?: number;
 }
 
 export interface AtmListItem {

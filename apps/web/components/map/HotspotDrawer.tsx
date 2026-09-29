@@ -1,12 +1,15 @@
 "use client"; // focus trap + client-side fetch
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { StatePanel } from "@/components/common/StatePanel";
 import { RiskBadge } from "@/components/common/RiskBadge";
+import { FactorBar } from "@/components/common/FactorBar";
+import { AlertModal } from "@/components/alerts/AlertModal";
 import { useFocusTrap } from "@/components/common/useFocusTrap";
 import { formatDistanceMeters, formatPaise, formatScorePercent, formatWindowIst } from "@/lib/formatters";
 import type { HotspotDetail } from "./types";
+import { LocationDetails } from "./LocationDetails";
 
 async function fetchHotspotDetail(h3Index: string): Promise<HotspotDetail> {
   const res = await fetch(`/api/hotspots/${h3Index}`);
@@ -19,9 +22,10 @@ async function fetchHotspotDetail(h3Index: string): Promise<HotspotDetail> {
 
 // AC-010-03/04: opens within 300ms (the shell renders immediately; data
 // fetches inside it) and shows every documented field in one screen.
-export function HotspotDrawer({ h3Index, onClose }: { h3Index: string; onClose: () => void }) {
+export function HotspotDrawer({ h3Index, onClose, embedded = false }: { h3Index: string; onClose: () => void; embedded?: boolean }) {
   const panelRef = useRef<HTMLDivElement>(null);
-  useFocusTrap(panelRef, true, onClose);
+  const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
+  useFocusTrap(panelRef, !embedded, onClose);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["hotspot-detail", h3Index],
@@ -30,13 +34,13 @@ export function HotspotDrawer({ h3Index, onClose }: { h3Index: string; onClose: 
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-slate-900/30" onClick={onClose} aria-hidden="true" />
+      {!embedded ? <div className="fixed inset-0 z-40 bg-slate-900/30" onClick={onClose} aria-hidden="true" /> : null}
       <div
         ref={panelRef}
-        role="dialog"
-        aria-modal="true"
+        role={embedded ? "region" : "dialog"}
+        aria-modal={embedded ? undefined : true}
         aria-labelledby="hotspot-drawer-heading"
-        className="fixed inset-y-0 right-0 z-50 w-full max-w-[480px] overflow-y-auto bg-white p-4 shadow-lg"
+        className={embedded ? "bg-white p-5" : "fixed inset-y-0 right-0 z-50 w-full max-w-[480px] overflow-y-auto bg-white p-5 shadow-lg"}
       >
         <div className="flex items-center justify-between">
           <h2 id="hotspot-drawer-heading" className="text-base font-semibold text-slate-800">
@@ -62,9 +66,22 @@ export function HotspotDrawer({ h3Index, onClose }: { h3Index: string; onClose: 
           </div>
         ) : data ? (
           <div className="mt-4 space-y-4 text-sm">
-            <div className="flex items-center gap-3">
-              <RiskBadge level={data.riskLevel} />
-              <span className="text-lg font-semibold text-slate-800">{formatScorePercent(data.riskScore)}</span>
+            <LocationDetails key={h3Index} latitude={data.latitude} longitude={data.longitude} predicted />
+            <p className="rounded-md border border-slate-200 p-3 text-xs leading-5 text-slate-600">The outlined hexagon is a predicted area. The pin marks its reference coordinate, not a confirmed withdrawal address.</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <RiskBadge level={data.riskLevel} />
+                <span className="text-lg font-semibold text-slate-800">{formatScorePercent(data.riskScore)}</span>
+              </div>
+              {data.predictionRef && data.expectedStart && data.expectedEnd ? (
+                <button
+                  type="button"
+                  onClick={() => setIsAlertModalOpen(true)}
+                  className="rounded-sm bg-red-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-700"
+                >
+                  Generate Alert
+                </button>
+              ) : null}
             </div>
 
             <div>
@@ -96,14 +113,9 @@ export function HotspotDrawer({ h3Index, onClose }: { h3Index: string; onClose: 
               {data.topFactors.length === 0 ? (
                 <p className="mt-1 text-slate-500">No explanation available for this cell.</p>
               ) : (
-                <ul className="mt-1 space-y-1">
+                <ul className="mt-1 divide-y divide-slate-100">
                   {data.topFactors.map((f) => (
-                    <li key={f.name} className="flex justify-between text-slate-700">
-                      <span>{f.name}</span>
-                      <span className={f.direction === "INCREASES" ? "text-red-700" : "text-emerald-700"}>
-                        {f.direction === "INCREASES" ? "▲ increases risk" : "▼ reduces risk"} {f.contribution.toFixed(1)}%
-                      </span>
-                    </li>
+                    <FactorBar key={f.name} name={f.name} contribution={f.contribution} direction={f.direction} />
                   ))}
                 </ul>
               )}
@@ -127,6 +139,29 @@ export function HotspotDrawer({ h3Index, onClose }: { h3Index: string; onClose: 
               )}
             </div>
           </div>
+        ) : null}
+
+        {isAlertModalOpen && data && data.predictionRef && data.expectedStart && data.expectedEnd ? (
+          <AlertModal
+            prediction={{
+              predictionRef: data.predictionRef,
+              location: {
+                name: data.name,
+                district: data.district,
+                state: data.state,
+                h3Index: data.h3Index,
+              },
+              window: {
+                start: data.expectedStart,
+                end: data.expectedEnd,
+              },
+              riskScore: data.riskScore,
+              riskLevel: data.riskLevel,
+              estimatedExposurePaise: data.estimatedExposurePaise ?? 0,
+              factors: data.topFactors,
+            }}
+            onClose={() => setIsAlertModalOpen(false)}
+          />
         ) : null}
       </div>
     </>

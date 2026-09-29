@@ -103,6 +103,10 @@ The ML service holds **no database credentials**. Every persisted consequence of
 | Alert modal title | `HIGH-RISK WITHDRAWAL ALERT` |
 | Degraded notice | must contain `prediction service unavailable` |
 | Node neutrality note | `Risk indicator. Not a finding about any person.` |
+| Citizen report notice (every `/safety` route) | `This prototype does not send your report to police or banks. To report, call 1930 or use cybercrime.gov.in.` |
+| Citizen status note | `You will see status updates here. Investigation details are shared only with police and banks.` |
+| Mule line (Scam Check, `/safety` home) | `Never let anyone use your bank account. Money passed through it makes you part of the fraud chain.` |
+| Helpline label | `National Cybercrime Helpline 1930` — never "official helpline" |
 
 ---
 

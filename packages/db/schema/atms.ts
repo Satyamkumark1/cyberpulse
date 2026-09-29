@@ -13,6 +13,9 @@ export const atms = pgTable(
     longitude: doublePrecision("longitude").notNull(),
     h3R8: text("h3_r8").notNull(),
     h3R9: text("h3_r9").notNull(),
+    // The locality inside the city ("T Nagar" within Chennai). Nullable so the
+    // column arrives additively; the generator populates it for every row.
+    locality: text("locality"),
     city: text("city").notNull(),
     district: text("district").notNull(),
     state: text("state").notNull(),

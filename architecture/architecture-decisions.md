@@ -308,6 +308,42 @@
 
 ---
 
+## ADR-021 — Extending the role concept: GUARD and I4C
+
+**Status:** Accepted · **Date:** 2026-09-18
+
+**Context.** ADR-019 established a role model that is asserted, never verified — any caller can select any of LEA/BANK/ADMIN, with authorisation enforced server-side regardless. Product requirements describe two personas with no code mapping today: an ATM Site Guard (operational, positional — see `project-management/decision-log.md` DEC-010, which explicitly rejected storing a specific guard's identity or contact number) and an I4C Intelligence Analyst (`product/personas.md` PER-02, national-scope, no case-management writes).
+
+**Decision.** Extend `ActorRole` with two more values, `GUARD` and `I4C`, in the exact same asserted-not-verified mechanism ADR-019 already uses — no new identity is stored for either. `GUARD` is read-only and identity-free: `hotspots:read`, `metrics:read`, `settings:read`, `health:read` only, with its own landing page (`/guard`) composing positional duty-post data — deliberately excluded from `/risk-map`, since the hotspot drawer behind that route returns complaint-linked data (`fraudType`, `amountPaise`) gated only by `hotspots:read`, and `GUARD` lacks `complaints:read`. `I4C` is a national-scope reader whose capability profile is a strict subset of LEA's, unscoped like LEA/ADMIN in `services/lib/scope.ts`, with no new page needed — every route it can reach already exists.
+
+**Alternatives.** (a) Store a real guard identity and notify a specific device — this is DEC-010's Option 1, already rejected, and remains rejected; nothing here reopens it. (b) Fold "the guard's info" into BANK's existing dashboard instead of a new role — smaller, but the user explicitly wanted the guard side to have its own view. (c) Map I4C onto the existing ADMIN role rather than adding a new one — rejected because I4C's actual needs (PER-02: national read access, no settings/simulation/demo-reset) are a materially different, narrower profile than ADMIN's.
+
+**Trade-offs.** The capability matrix grows from 22×3=66 to 22×5=110 cases. Two pre-existing bugs surfaced and were fixed in the same change because GUARD is the first role whose profile exposes them: `reportService.metrics()` was checking `reports:read` instead of the documented `metrics:read`, and `InvestigationActionPanel`'s UI-only transition/note gating (written only with BANK in mind) would have shown I4C controls that 403 on submit.
+
+**Consequences.** Migration `0005_add_guard_i4c_roles.sql` (additive `ALTER TYPE ... ADD VALUE`, rollback documented as a type rebuild — enum values cannot be dropped in place). `REQUIREMENTS.md` FR-20 updated in the same PR (CLAUDE.md binding instruction #2). `security/authorization.md` and `security/auth-strategy.md` updated to match. `project-management/decision-log.md` DEC-011 states explicitly why this does not reverse DEC-010.
+
+**Reversible.** The capability matrix and page changes are reversible. The migration is not cleanly reversible — see its rollback note.
+
+---
+
+## ADR-022 — CITIZEN role and public report intake
+
+**Status:** Accepted · **Date:** 2026-09-24
+
+**Context.** DEC-013 adds Scam Shield, whose Report Now flow lets a member of the public create a complaint that officers then analyse. Every write in the system is attributed to an `ActorRole`, and every audit event carries one, so a citizen submission needs a role. The citizen must also be able to see the progress of their own report without seeing anything the prediction produced, and without the system storing who they are.
+
+**Decision.** Add `CITIZEN` to `ActorRole`, in the same asserted-not-verified mechanism as ADR-019 and ADR-021. `CITIZEN` is denied all 22 existing capabilities and holds two new ones, `citizenReports:create` and `citizenReports:status`, which no other role holds. `/safety` pages always send `x-cyberpulse-role: CITIZEN`, independent of the role cookie. A submission creates a `DEMO`-origin complaint (ID from a dedicated sequence, `C-90000` to `C-99999`), a `citizen_reports` row holding only a SHA-256 hash of a one-time tracking code, and an audit event, in one transaction. Status lookup takes the complaint ID and the tracking code in a POST body; a wrong code and an unknown ID return byte-identical 404s. The status response schema is strict and carries only `complaintId`, `stage` and `updatedAt`.
+
+**Alternatives.** (a) No role: make the citizen endpoints capability-free like health. Rejected: every service function calls `requireCapability`, and the audit event needs an actor. (b) Look up status by complaint ID alone. Rejected: complaint IDs are sequential, so anyone could read any citizen report's progress. (c) Collect a phone number to send status updates. Rejected: a personal-data column, which the schema forbids.
+
+**Trade-offs.** The capability matrix grows from 110 to 144 cases. A lost tracking code cannot be recovered, by design. With no role cookie the dashboard still resolves to LEA; that declared gap (ADR-019) is unchanged, and this ADR does not claim to close it.
+
+**Consequences.** Migration `0006_add_citizen_reports.sql`. `security/authorization.md`, `security/auth-strategy.md` and `security/threat-model.md` updated. `CITIZEN_REPORT_SUBMITTED` becomes the seventh audited action.
+
+**Reversible.** The capability and page changes are reversible. The enum value is not cleanly reversible — see the migration's rollback note.
+
+---
+
 ## Decision Index
 
 | ADR | Title | Status | Supersedes |
@@ -332,3 +368,6 @@
 | 018 | Integer paise, UTC | Accepted | — |
 | 019 | Roles without authentication | Accepted | — |
 | 020 | Single typed error envelope | Accepted | — |
+| 021 | GUARD and I4C roles | Accepted | — |
+| 022 | CITIZEN role and public report intake | Accepted | — |
+| 021 | Extending the role concept: GUARD and I4C | Accepted | — |

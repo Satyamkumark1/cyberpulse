@@ -3,6 +3,7 @@
 // it lives here rather than in packages/shared, matching how other
 // REST-only envelopes (e.g. ComplaintListQuery) are declared beside their
 // route rather than codegen'd.
+import type { TrailAssociation, TrailSummary, TrailView } from "@/services/lib/moneyTrail";
 export type GraphNodeType = "VICTIM" | "MULE_ACCOUNT" | "ATM";
 
 export interface VictimNodeData extends Record<string, unknown> {
@@ -22,6 +23,7 @@ export interface MuleAccountNodeData extends Record<string, unknown> {
 export interface AtmWithdrawal {
   amountPaise: number;
   timestamp: string;
+  association?: TrailAssociation;
 }
 
 export interface AtmNodeData extends Record<string, unknown> {
@@ -43,7 +45,7 @@ export interface ApiGraphEdge {
   id: string;
   source: string;
   target: string;
-  data: { amountPaise: number; timestamp: string; channel: string };
+  data: { amountPaise: number; timestamp: string; channel: string; association?: TrailAssociation };
 }
 
 export interface NetworkResponse {
@@ -52,4 +54,7 @@ export interface NetworkResponse {
   truncated: boolean;
   nodeCount: number;
   requestedDepth: number;
+  view?: TrailView;
+  summary?: TrailSummary;
+  recordsLimited?: boolean;
 }

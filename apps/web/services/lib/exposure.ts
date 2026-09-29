@@ -3,7 +3,21 @@ import { and, eq, gte, lte, ne, sql } from "drizzle-orm";
 
 const { complaints, predictions, hotspots } = dbSchema;
 
-const HORIZON_HOURS = 24;
+export const HORIZON_HOURS = 24;
+
+/**
+ * Pure predicate for ASM-10 / TC-UNIT-020.
+ */
+export function isEligibleForExposure(
+  complaint: { status: string; complaintTimestamp: string },
+  referenceTimestamp: string,
+): boolean {
+  if (complaint.status === "RESOLVED") return false;
+  const refTime = new Date(referenceTimestamp).getTime();
+  const cTime = new Date(complaint.complaintTimestamp).getTime();
+  const horizonMs = HORIZON_HOURS * 3600_000;
+  return cTime >= refTime - horizonMs && cTime <= refTime + horizonMs;
+}
 
 /**
  * ASM-10 / architecture/low-level-design.md §3.1. Defined once so the API

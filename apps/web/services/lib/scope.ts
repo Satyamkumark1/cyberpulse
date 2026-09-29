@@ -5,8 +5,29 @@ import type { ActorRole } from "@cyberpulse/shared/enums";
 const { complaints, transactions, predictions, alerts } = dbSchema;
 
 /**
+ * The alert destinations a BANK caller is in scope for.
+ *
+ * `ATM_SITE` is included because the bank operates the ATM site and performs
+ * the cascade to its duty post (DEC-010) — an alert the bank cannot see is an
+ * alert nobody can action. Defined once and shared by every scope site, so the
+ * complaint, transaction and alert rules cannot drift apart.
+ */
+export const BANK_VISIBLE_RECIPIENTS = ["BANK", "ATM_SITE"] as const;
+
+/** The scope rule as a SQL predicate over `alerts.recipients`. */
+export function bankRecipientPredicate(): SQL {
+  return sql`${alerts.recipients} && ARRAY['BANK','ATM_SITE']::recipient_kind[]`;
+}
+
+/** The same rule applied to a row already loaded. */
+export function bankCanSeeRecipients(recipients: readonly string[]): boolean {
+  return BANK_VISIBLE_RECIPIENTS.some((kind) => recipients.includes(kind));
+}
+
+/**
  * Stage 2 of two (security/authorization.md §3). A BANK caller may act on a
- * complaint only if it is reachable from an alert addressed to BANK. LEA and
+ * complaint only if it is reachable from an alert addressed to a destination
+ * the bank acts on ({@link BANK_VISIBLE_RECIPIENTS}). LEA and
  * ADMIN are unscoped in v1.0 — a documented limitation, not a design goal.
  *
  * Returned as a query predicate, composed into the caller's WHERE clause —
@@ -22,7 +43,7 @@ export function complaintScope(role: ActorRole): SQL | undefined {
       .select({ id: predictions.complaintId })
       .from(alerts)
       .innerJoin(predictions, eq(alerts.predictionId, predictions.id))
-      .where(sql`'BANK' = ANY(${alerts.recipients})`),
+      .where(bankRecipientPredicate()),
   );
 }
 
@@ -37,6 +58,6 @@ export function transactionScope(role: ActorRole): SQL | undefined {
       .select({ id: predictions.complaintId })
       .from(alerts)
       .innerJoin(predictions, eq(alerts.predictionId, predictions.id))
-      .where(sql`'BANK' = ANY(${alerts.recipients})`),
+      .where(bankRecipientPredicate()),
   );
 }

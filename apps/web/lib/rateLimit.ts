@@ -38,7 +38,7 @@ function checkRateLimit(key: string, config: RateLimitConfig): { allowed: boolea
 
 // Extra args (e.g. Next's dynamic-route `{ params }`) are forwarded
 // untouched — the wrapper only inspects `req`, the first argument.
-type Handler<A extends unknown[]> = (req: Request, ...rest: A) => Promise<Response>;
+export type RateLimitedHandler<A extends unknown[]> = (req: Request, ...rest: A) => Promise<Response>;
 
 /**
  * A 429 carries Retry-After and writes no data (architecture/security-architecture.md §7).
@@ -49,7 +49,7 @@ export function withRateLimit<A extends unknown[] = []>(
   config: RateLimitConfig,
   keyFn: (req: Request) => string = defaultKey,
 ) {
-  return (handler: Handler<A>): Handler<A> =>
+  return (handler: RateLimitedHandler<A>): RateLimitedHandler<A> =>
     async (req, ...rest) => {
       const key = `${new URL(req.url).pathname}:${keyFn(req)}`;
       const result = checkRateLimit(key, config);

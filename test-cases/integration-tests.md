@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Version | 1.0 |
-| Count | 58 |
+| Count | 70 |
 | Environment | Route handler → service → **real PostgreSQL**; ML real or contract-stubbed |
 | Practice | `engineering/integration-testing.md` |
 
@@ -213,6 +213,27 @@ The four cases that protect this product's defining failure mode.
 
 ---
 
+## Scam Shield (FEAT-17) — TC-SAFE-010 … 021
+
+Real database, no mocks of it. Files: `services/citizenReportService.int.test.ts`, `services/demoService.int.test.ts`, `services/lib/auth.test.ts` (matrix).
+
+| ID | Case | Req | Priority |
+|---|---|---|---|
+| TC-SAFE-010 | Submit persists a `DEMO` complaint (`C-9####`, seeded city's state, valid H3 cell), a `citizen_reports` row whose hash is SHA-256 of the returned code, and a `CITIZEN_REPORT_SUBMITTED` audit event; the response equals what was persisted | FR-28.1, FR-28.3, FR-29.2 | Critical |
+| TC-SAFE-011 | Each of nine server-derived fields → 400 naming the field | FR-28.2 | Critical |
+| TC-SAFE-012 | Unknown key, amount 0, 99, fractional, above ₹10 crore, unknown fraud type → 400; 100 paise → 201 | FR-28 | High |
+| TC-SAFE-013 | A city outside the seeded list → 400; nothing written | FR-28 | High |
+| TC-SAFE-014 | Audit write fails inside the transaction → no complaint row survives | FR-28.3 | Critical |
+| TC-SAFE-015 | Sixth report in a minute from one IP → 429; nothing written | FR-28.4 | High |
+| TC-SAFE-016 | Status is RECEIVED for a new report (code in any case, no dashes); ALERT_SENT once its investigation is | FR-29 | High |
+| TC-SAFE-017 | Wrong code and unknown ID → byte-identical 404 bodies; a seeded complaint is not trackable | FR-29.1 | Critical |
+| TC-SAFE-018 | Status response keys are exactly `complaintId`, `stage`, `updatedAt` | FR-29 | Critical |
+| TC-SAFE-019 | CITIZEN → 403 on all 22 officer capabilities; every other role → 403 on both citizen capabilities (matrix 24 × 6 = 144) | FR-20.4 | Critical |
+| TC-SAFE-020 | Reset deletes a citizen complaint with the USER-origin prediction, investigation and alert made on it; counts previewed and returned; seed complaints and predictions unchanged | FR-30.1 | Critical |
+| TC-SAFE-021 | Schema introspection finds no personal-data column (TC-SEC-022 re-run with `citizen_reports`) | FR-28 | Critical |
+
+---
+
 ## Summary
 
 | Group | Cases | Critical | High | Medium |
@@ -226,4 +247,5 @@ The four cases that protect this product's defining failure mode.
 | Demo reset | 3 | 1 | 2 | 0 |
 | Health and settings | 4 | 0 | 3 | 1 |
 | Authorisation (66 generated from the matrix, counted once) | 19 | 8 | 11 | 0 |
-| **Total** | **58** | **21** | **29** | **8** |
+| Scam Shield (FEAT-17) | 12 | 8 | 4 | 0 |
+| **Total** | **70** | **29** | **33** | **8** |

@@ -22,6 +22,7 @@ describe("hotspotService.getDetail — architecture/api-design.md API-031", () =
     if (!seeded) throw new Error("fixture precondition failed: no seeded hotspot to test against");
 
     const result = await getDetail(seeded.h3Index, ctx);
+    expect(new Set(result.relatedComplaints.map((c) => c.complaintId)).size).toBe(result.relatedComplaints.length);
     for (let i = 1; i < result.nearbyAtms.length; i++) {
       expect(result.nearbyAtms[i - 1]!.distance).toBeLessThanOrEqual(result.nearbyAtms[i]!.distance);
     }

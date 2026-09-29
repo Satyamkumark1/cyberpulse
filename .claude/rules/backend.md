@@ -83,7 +83,7 @@ Retry: connection errors only, once. Never a timeout, never a 4xx.
 
 ## Rate limits
 
-Applied via `withRateLimit(limit, windowMs)`, so adding an endpoint forces an explicit decision. Predict 20/min, alerts 10/min, mutations 30/min, reads 120/min, health 600/min. A 429 writes nothing.
+Applied via `withRateLimit(limit, windowMs)`, so adding an endpoint forces an explicit decision. Predict 30/min (raised from 20 — the demo's "RUN DEMO SCENARIO" control fires ten real predict calls per run, `DEMO_COMPLAINT_IDS`; 30 covers three runs inside one window), alerts 10/min, mutations 30/min, reads 120/min, health 600/min, citizen report submission 5/min per IP (the only public write, FEAT-17). A 429 writes nothing.
 
 ---
 

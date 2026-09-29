@@ -33,7 +33,7 @@ export function GraphAccessibleTable({ nodes, edges }: { nodes: ApiGraphNode[]; 
             {nodes.map((n) => (
               <tr key={n.id} className="border-b border-slate-100">
                 <td className="py-2 pr-4 font-mono text-xs">{n.id}</td>
-                <td className="py-2 pr-4">{n.type.replace("_", " ")}</td>
+                <td className="py-2 pr-4">{n.type === "MULE_ACCOUNT" ? "Linked Account" : n.type}</td>
                 <td className="py-2 pr-4 text-xs text-slate-600">{describeNode(n)}</td>
               </tr>
             ))}
@@ -49,6 +49,7 @@ export function GraphAccessibleTable({ nodes, edges }: { nodes: ApiGraphNode[]; 
               <th className="py-2 pr-4">From</th>
               <th className="py-2 pr-4">To</th>
               <th className="py-2 pr-4">Amount</th>
+              <th className="py-2 pr-4">Association</th>
               <th className="py-2 pr-4">Channel</th>
               <th className="py-2 pr-4">Timestamp</th>
             </tr>
@@ -59,6 +60,7 @@ export function GraphAccessibleTable({ nodes, edges }: { nodes: ApiGraphNode[]; 
                 <td className="py-2 pr-4 font-mono text-xs">{e.source}</td>
                 <td className="py-2 pr-4 font-mono text-xs">{e.target}</td>
                 <td className="py-2 pr-4">{formatPaise(e.data.amountPaise)}</td>
+                <td className="py-2 pr-4 text-xs">{e.data.association === "RELATED" ? "Related activity — not attributed to this complaint" : "Complaint-linked record"}</td>
                 <td className="py-2 pr-4">{e.data.channel}</td>
                 <td className="py-2 pr-4">{formatTimestampIst(e.data.timestamp)}</td>
               </tr>

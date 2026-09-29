@@ -7,14 +7,14 @@ export type MuleAccountFlowNode = Node<MuleAccountNodeData, "MULE_ACCOUNT">;
 // + text — determinable under a greyscale filter (AC-004-02, TC-A11Y-009).
 export function MuleAccountNode({ data, selected }: NodeProps<MuleAccountFlowNode>) {
   return (
-    <div className={`w-44 rounded-sm border-2 bg-white px-3 py-2 shadow-sm ${selected ? "border-sih-blue-600" : "border-slate-400"}`}>
+    <div className={`w-44 rounded-lg border-2 bg-white px-3 py-2.5 shadow-sm transition-shadow ${selected ? "border-amber-600 shadow-md ring-4 ring-amber-100" : "border-amber-500/70"}`}>
       <Handle type="target" position={Position.Left} />
       <Handle type="source" position={Position.Right} />
       <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
-        <span aria-hidden="true">▤</span> Mule Account
+        <span aria-hidden="true">▤</span> Linked Account
       </div>
       <div className="mt-1 font-mono text-sm text-slate-800">{data.accountId}</div>
-      <div className="text-xs text-slate-600">risk {data.riskScore.toFixed(2)}</div>
+      <div className="mt-1 flex items-center justify-between text-xs text-slate-600"><span>Risk score</span><span className="font-mono font-semibold text-amber-800">{data.riskScore.toFixed(2)}</span></div>
     </div>
   );
 }

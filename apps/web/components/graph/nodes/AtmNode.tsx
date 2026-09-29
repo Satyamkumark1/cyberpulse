@@ -7,7 +7,7 @@ export type AtmFlowNode = Node<AtmNodeData, "ATM">;
 // text — determinable under a greyscale filter (AC-004-02, TC-A11Y-009).
 export function AtmNode({ data, selected }: NodeProps<AtmFlowNode>) {
   return (
-    <div className={`w-40 rounded-full border-2 bg-white px-3 py-2 text-center shadow-sm ${selected ? "border-sih-blue-600" : "border-slate-400"}`}>
+    <div className={`w-40 rounded-full border-2 bg-white px-3 py-2.5 text-center shadow-sm transition-shadow ${selected ? "border-teal-700 shadow-md ring-4 ring-teal-100" : "border-teal-600/70"}`}>
       <Handle type="target" position={Position.Left} />
       <div className="flex items-center justify-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
         <span aria-hidden="true">◉</span> ATM

@@ -3,13 +3,13 @@
 | Field | Value |
 |---|---|
 | Version | 1.0 |
-| Features | FEAT-01 … FEAT-16 |
+| Features | FEAT-01 … FEAT-17 |
 | Traces from | `REQUIREMENTS.md`, `USER_STORIES.md` |
 | Traces to | `ACCEPTANCE_CRITERIA.md`, `architecture/api-design.md`, `test-cases/` |
 
 Every feature below is specified with the same fourteen sections so that an implementer never has to guess where a decision was recorded.
 
-Roles referenced: **LEA** (law enforcement), **BANK** (bank nodal officer), **ADMIN** (platform administrator).
+Roles referenced: **LEA** (law enforcement), **BANK** (bank nodal officer), **ADMIN** (platform administrator), **CITIZEN** (member of the public, FEAT-17 only).
 
 ---
 
@@ -537,6 +537,36 @@ Backward transitions are permitted only to the immediately preceding state and r
 
 ---
 
+# FEAT-17 — Scam Shield (Citizen Safety)
+
+**Name:** Scam Shield
+**Description:** A public `/safety` section in English and Hindi: Scam Check, Verify Before You Pay, Report Now and status tracking. Added by DEC-013; role model in ADR-022; build plan in `implementation/phase-9.md`.
+
+**User problem.** A person being scammed does not know which of a dozen government portals to use, or that reporting within the first hour decides whether the money can be put on hold. The costliest scam, the "digital arrest" call, works by keeping the victim isolated and on camera.
+
+**Business value.** Covers the citizen's side of the chain the product otherwise starts after: recognition before payment, and a fast report after it. A citizen report enters the same prediction path officers use, which gives the demonstration its first end-to-end story from citizen to interception.
+
+**Behaviour.** Scam Check: six scenarios × four statements; two or more ticks is `STOP`, one is `CAUTION`, none is `NONE`; the result lists the matched reasons, next steps and sources. Verify: pure format checks for `.bank.in` links, `1600xx` callers and `@valid` UPI handles. Report Now: 1930 first, then fraud type, amount and city, then a complaint ID and a one-time tracking code. Status: complaint ID + tracking code → one of four stages.
+
+**Rules, not a model.** Scam Check and Verify are fixed rules (`apps/web/lib/safety/`). A person deciding whether to hang up needs reasons, not a probability, and no public Indian scam dataset exists to train one on.
+
+**Database requirements.** `citizen_reports` (complaint FK, tracking-code hash) and `citizen_complaint_seq` (`C-90000` … `C-99999`); migration `0006_add_citizen_reports`. Citizen complaints are `origin = 'DEMO'` and cleared by demo reset with everything that depends on them.
+
+**Edge cases.** No transaction chain on a citizen complaint (prediction uses the documented defaults path, TC-UNIT-013); a city outside the seeded list (400); a lost tracking code (not recoverable, by design); a stale Verify result after editing (hidden until re-checked).
+
+**Failure scenarios.** City list cannot load: the report page shows the 1930 instruction and an error, never a blank page. Submission fails: the form keeps its values and states the reason. ML unavailable: officers see the existing degraded state; the citizen side is unaffected.
+
+**Permissions.** `citizenReports:create` and `citizenReports:status`, CITIZEN only. CITIZEN holds no officer capability.
+
+**Security requirements.** No personal-data field or free text anywhere in the form; strict schemas; server-derived fields rejected with 400; tracking code hashed at rest, sent only in a POST body; wrong code and unknown ID indistinguishable; submission audited in its transaction; 5 reports per minute per IP.
+
+**Analytics events.** None added. Any later event carries role and route only, never the complaint ID or code.
+
+**Acceptance criteria.** AC-017-01 … AC-017-11
+**Test cases.** TC-SAFE-001 … TC-SAFE-039
+
+---
+
 ## Feature → Requirement → Phase Index
 
 | Feature | Requirements | Stories | Phase |
@@ -557,3 +587,4 @@ Backward transitions are permitted only to the immediately preceding state and r
 | FEAT-14 | FR-18.x, FR-19.x | US-080 … US-083 | P7 |
 | FEAT-15 | FR-20.x … FR-23, FR-25 | US-090 … US-093 | P2–P6 |
 | FEAT-16 | FR-01.x | US-001 … US-004 | P2 |
+| FEAT-17 | FR-26 … FR-30.1, FR-20.4 | — | P9 |

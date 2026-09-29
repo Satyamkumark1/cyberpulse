@@ -193,7 +193,8 @@ Priority uses MoSCoW. **Must** requirements are release-blocking.
 | FR-18.2 | Reset shall be idempotent and shall not delete seed data | Must | T | TC-API-060 | P7 |
 | FR-18.3 | `/demo` shall pre-warm the ML service on mount | Must | A | TC-PERF-007 | P7 |
 | FR-19 | The dashboard shall expose a "RUN DEMO SCENARIO" control | Must | T | TC-UI-070 | P7 |
-| FR-19.1 | The control shall load complaint C-10284, show a processing indication, call the real prediction API, display results, highlight the hotspot on the map, show the explanation and the money-trail graph, and enable alert generation | Must | T | TC-E2E-022 | P7 |
+| FR-19.1 | The control shall load the ten complaints in DEMO_COMPLAINT_IDS, show a processing indication per complaint, call the real prediction API concurrently for all ten, and display results, the money-trail link, the explanation and alert generation independently for each (DEC-012) | Must | T | TC-E2E-022 | P7 |
+| FR-19.4 | A single complaint's prediction failure shall degrade only that complaint's rows; the other nine shall complete and the run shall still advance. The run shall freeze only when all ten fail | Must | T | TC-E2E-022 | P7 |
 | FR-19.2 | No step of the demo scenario shall use a hard-coded prediction value | Must | I | TC-INT-012 | P7 |
 | FR-19.3 | If the ML service is unavailable, the demo shall display an explicit degraded-mode notice rather than fabricated output | Must | T | TC-E2E-023 | P7 |
 
@@ -201,14 +202,36 @@ Priority uses MoSCoW. **Must** requirements are release-blocking.
 
 | ID | Requirement | Pri | Verify | Tests | Phase |
 |---|---|:--:|:--:|---|:--:|
-| FR-20 | The system shall implement roles LEA, BANK and ADMIN | Must | T | TC-SEC-010 | P3 |
+| FR-20 | The system shall implement roles LEA, BANK, ADMIN, GUARD, I4C and CITIZEN | Must | T | TC-SEC-010 | P3 |
+| FR-20.4 | CITIZEN shall hold no officer capability, and only CITIZEN may file or track a citizen report (ADR-022) | Must | T | TC-SAFE-019 | P9 |
+| FR-20.3 | GUARD shall be read-only and identity-free — no personal-data column or per-guard identity may exist anywhere the role's data passes through | Must | I,T | TC-SEC-022 | P7 |
 | FR-20.1 | Role capability shall be enforced in route handlers, not only hidden in the UI | Must | T | TC-SEC-011 | P3 |
 | FR-20.2 | Role switching shall be permitted in the prototype and shall be visibly labelled as a prototype affordance | Must | I | TC-UI-080 | P3 |
-| FR-21 | Audit events shall be written for alert dispatch, alert acknowledgement and investigation status change | Must | T | TC-SEC-033 | P5 |
+| FR-21 | Audit events shall be written for alert dispatch, alert acknowledgement, investigation status change and citizen report submission (FR-28.3) | Must | T | TC-SEC-033, TC-SAFE-014 | P5, P9 |
 | FR-22 | Settings shall expose a configurable risk threshold that affects risk-level mapping | Should | T | TC-API-070 | P6 |
 | FR-22.1 | Settings shall display system mode (Prototype), data mode (Synthetic / Anonymised), model version and notification preferences | Must | T | TC-UI-081 | P6 |
 | FR-23 | `GET /api/health` shall report status of the web app, database and ML service with per-component latency | Must | T | TC-API-080 | P2 |
 | FR-25 | Every route shall display the persistent "Sample / Synthetic Prototype Data" badge and the prototype disclaimer | Must | I,T | TC-UI-082 | P3 |
+
+## 1.16 Scam Shield — Citizen Safety (FEAT-17)
+
+Added by DEC-013. The only part of the product addressed to members of the public. Nothing on these routes shows a model output to the citizen.
+
+| ID | Requirement | Pri | Verify | Tests | Phase |
+|---|---|:--:|:--:|---|:--:|
+| FR-26 | `/safety/check` shall offer six scam scenarios of four yes/no statements each, and show the matched red flags, their reasons and next steps — never a score, percentage or probability | Must | T | TC-SAFE-001, TC-SAFE-002, TC-SAFE-030 | P9 |
+| FR-26.1 | Every statement shall name the public advisory it is based on | Must | I,T | TC-SAFE-001 | P9 |
+| FR-27 | `/safety/verify` shall check a link (`.bank.in`), a caller number (`1600xx`) and an investment UPI ID (`@valid`) in the browser, making no network request | Must | T | TC-SAFE-003 … TC-SAFE-005, TC-SAFE-031 | P9 |
+| FR-28 | `/safety/report` shall direct the citizen to 1930 before any form, and the form shall collect only fraud type, amount and city | Must | T | TC-SAFE-032, TC-SAFE-037 | P9 |
+| FR-28.1 | A citizen report shall create a `DEMO`-origin complaint that appears in the officer queue and is analysed through the existing prediction path | Must | T | TC-SAFE-010, TC-SAFE-033 | P9 |
+| FR-28.2 | A server-derived field supplied by the client shall be rejected with 400 | Must | T | TC-SAFE-011 | P9 |
+| FR-28.3 | The complaint, the citizen report row and the audit event shall commit or roll back together | Must | T | TC-SAFE-010, TC-SAFE-014 | P9 |
+| FR-28.4 | Citizen report submission shall be rate limited to 5 per minute per IP; a 429 shall write nothing | Must | T | TC-SAFE-015 | P9 |
+| FR-29 | `/safety/status` shall show the stage of a report, given its complaint ID and one-time tracking code, and nothing the prediction produced | Must | T | TC-SAFE-016, TC-SAFE-018, TC-SAFE-032, TC-SAFE-034 | P9 |
+| FR-29.1 | A wrong tracking code and an unknown complaint ID shall return byte-identical 404 responses | Must | T | TC-SAFE-017 | P9 |
+| FR-29.2 | The tracking code shall be stored only as a SHA-256 hash and shall never travel in a URL | Must | I,T | TC-SAFE-010 | P9 |
+| FR-30 | Every `/safety` route shall render in English and Hindi, selected by the `lang` query parameter, and shall carry the report notice fixed string | Must | T | TC-SAFE-007, TC-SAFE-035, TC-SAFE-038 | P9 |
+| FR-30.1 | Demo reset shall remove every `DEMO`-origin complaint and every row that depends on it, whatever that row's own origin | Must | T | TC-SAFE-020 | P9 |
 
 ---
 

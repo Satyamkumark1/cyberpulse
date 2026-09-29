@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Version | 1.0 |
-| Count | 35 |
+| Count | 45 |
 | Tool | Playwright against the preview deployment |
 | Practice | `engineering/e2e-testing.md` |
 
@@ -166,6 +166,25 @@
 
 ---
 
+## Scam Shield (FEAT-17) — TC-SAFE-030 … 039
+
+Phone viewport (Pixel 7). `tests/safety/safety.spec.ts`, `playwright.safety.config.ts`. TC-SAFE-033 needs the ML service; every row the suite writes is `DEMO`-origin and the suite ends with a demo reset.
+
+| ID | Case | Req | Priority |
+|---|---|---|---|
+| TC-SAFE-030 | Scam Check: no verdict before the first tick; one tick → "Be careful"; two → "Stop" with the count and the matched reason; no `%` anywhere | FR-26 | Critical |
+| TC-SAFE-031 | Verify: link, number and UPI results as documented; editing hides the stale result; zero `/api/*` requests | FR-27 | High |
+| TC-SAFE-032 | Report Now shows the ID and code from the intercepted response, focus on the result heading; status page renders the stage from an intercepted response; a wrong code shows the not-found message and no stage | FR-28, FR-29 | Critical |
+| TC-SAFE-033 | Full chain: citizen report → LEA queue → real prediction → alert → citizen sees "Alert sent to bank and police" | FR-28.1, FR-29 | Critical |
+| TC-SAFE-034 | Status page contains no percentage, rupee amount, time range, "hotspot" or "window" | FR-29 | Critical |
+| TC-SAFE-035 | Badge, disclaimer and report notice on all five routes in both languages | FR-30, FR-25 | Critical |
+| TC-SAFE-036 | axe clean at critical and serious on five routes, both languages — **manual** until `@axe-core/playwright` is adopted (a dependency decision not taken in P9) | NFR-08 | High |
+| TC-SAFE-037 | Report Now by keyboard with focus moved to each step heading; an invalid submit focuses the first invalid field | NFR-08 | High |
+| TC-SAFE-038 | The Hindi link sets `lang=hi`; `main[lang=hi]`; Hindi heading | FR-30 | Medium |
+| TC-SAFE-039 | A CITIZEN role cookie on `/dashboard` shows the officer gate, not an error | FR-20.4 | Medium |
+
+---
+
 ## Summary
 
 | Group | Cases | Critical | High | Medium | Low |
@@ -178,4 +197,5 @@
 | Integrity in the browser | 5 | 3 | 2 | 0 | 0 |
 | Accessibility journeys | 3 | 2 | 1 | 0 | 0 |
 | Supplementary flows | 4 | 0 | 2 | 2 | 0 |
-| **Total** | **35** | **15** | **13** | **6** | **1** |
+| Scam Shield (FEAT-17) | 10 | 5 | 3 | 2 | 0 |
+| **Total** | **45** | **20** | **16** | **8** | **1** |

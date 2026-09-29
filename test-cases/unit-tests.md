@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Version | 1.0 |
-| Count | 96 TypeScript + 9 data pipeline (Python unit and AI cases are in `ai/ai-test-cases.md`) |
+| Count | 104 TypeScript + 9 data pipeline (Python unit and AI cases are in `ai/ai-test-cases.md`) |
 | Tools | Vitest · pytest |
 | Format | `test-cases/test-case-template.md` |
 
@@ -193,6 +193,23 @@
 
 ---
 
+## Scam Shield (FEAT-17) — TC-SAFE-001 … 007, 040
+
+Pure logic in `apps/web/lib/safety/` and `packages/shared/citizen.ts`. Files: `lib/safety/*.test.ts`.
+
+| ID | Case | Req | Priority |
+|---|---|---|---|
+| TC-SAFE-001 | Each of six scenarios has exactly four statements, each with text and reason in both languages and a named source; every scenario's steps end with 1930 | FR-26, FR-26.1 | High |
+| TC-SAFE-002 | `evaluateAnswers` at 0, 1, 2 and 4 matched → NONE, CAUTION, STOP, STOP | FR-26 | Critical |
+| TC-SAFE-003 | `checkLink`: `.bank.in` https pass; http caution; `bank.in.evil.com`, `sbibank.in`, bank-like names warn; `user@host` disguise resolves to the real host; punycode, bare IP, shorteners, non-http schemes | FR-27 | High |
+| TC-SAFE-004 | `checkCaller`: `1600` + 6 digits pass (with `+91`, spaces); 9-digit and `160x` do not; `140` caution; 10-digit mobile and international warn | FR-27 | High |
+| TC-SAFE-005 | `checkUpi`: `@valid<bank>` pass (broker `.brk`, fund `.mf`); bare `@valid`, `@ybl`, reversed handles and malformed IDs warn; case-insensitive | FR-27 | High |
+| TC-SAFE-006 | `citizenStageOf` maps every complaint and investigation status; investigation wins; strict status response rejects an extra key; tracking code normalised | FR-29 | Critical |
+| TC-SAFE-007 | Hindi copy has a string for every English leaf, arrays included; report notice fixed string exact; `lang` read from the query string | FR-30 | High |
+| TC-SAFE-040 | `no_hardcode_check.sh` fails on Hindi equivalents of prohibited claims and terms | FR-30 | High |
+
+---
+
 ## Summary
 
 | Group | Cases | Critical | High | Medium | Low |
@@ -203,6 +220,7 @@
 | Schema validation | 10 | 6 | 4 | 0 | 0 |
 | Coverage | 1 | 0 | 1 | 0 | 0 |
 | Component units | 58 | 8 | 22 | 24 | 4 |
-| **Total** | **96** | **23** | **39** | **29** | **5** |
+| Scam Shield (FEAT-17) | 8 | 2 | 6 | 0 | 0 |
+| **Total** | **104** | **25** | **45** | **29** | **5** |
 
 Component unit cases are enumerated in `test-cases/frontend-tests.md`; they are counted here because they run in the unit tier.

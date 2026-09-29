@@ -378,10 +378,16 @@ Reads the latest `model_metrics` row for the active model version. Returns 200 w
 Overall status is `healthy`, `degraded` (any component degraded or warming) or `unhealthy` (database down). This endpoint never throws; a failing component is reported, not propagated. **Tests:** TC-API-080
 
 ### API-090 · `POST /api/demo/reset`
-ADMIN or the demo route. Deletes only `origin = 'DEMO'` rows from `alerts` and `investigations` in one transaction. Idempotent. Returns `{ "alertsCleared": 2, "investigationsCleared": 1 }`. Cannot touch seed data — the `origin` filter is the guarantee. **Tests:** TC-API-060, TC-E2E-021
+ADMIN or the demo route. Deletes, in one transaction and in dependency order, `origin = 'DEMO'` alerts and investigations, and every `DEMO`-origin complaint (FEAT-17 citizen reports) with the predictions, investigations and alerts that depend on it whatever their own origin. Idempotent. Returns `{ "alertsCleared": 2, "investigationsCleared": 1, "complaintsCleared": 1 }`. Cannot touch seed data — the `origin` filter is the guarantee. **Tests:** TC-API-060, TC-E2E-021, TC-SAFE-020
 
 ### API-091 · `POST /api/role`
 `{ "role": "BANK" }`. Sets the prototype role. Documented in `security/auth-strategy.md` as **not a security control**. **Tests:** TC-UI-080
+
+### API-100 · `POST /api/citizen/reports`
+FEAT-17, ADR-022. CITIZEN only (`/safety` always sends `x-cyberpulse-role: CITIZEN`). Body, strict: `{ "fraudType": "UPI_FRAUD", "amountPaise": 4500000, "city": "Mumbai" }` — `amountPaise` an integer from 100 to 10,00,00,000,00; `city` one of the seeded cities (else 400, `field: "city"`). Any of `complaintId`, `status`, `origin`, `victimLat`, `victimLon`, `victimH3R8`, `district`, `state`, `complaintTimestamp` → 400 naming the field. Creates a `DEMO`-origin complaint (ID from `citizen_complaint_seq`, coordinates the seeded centroid of the city), a `citizen_reports` row and a `CITIZEN_REPORT_SUBMITTED` audit event in one transaction. Returns 201 `{ "complaintId": "C-90018", "trackingCode": "2WWM-ZEWZ-2QON-DMSE" }`; the code is returned once and stored only as a hash. 5/min per IP. **Tests:** TC-SAFE-010 … TC-SAFE-015
+
+### API-101 · `POST /api/citizen/reports/status`
+CITIZEN only. POST so the tracking code travels in a body, never a URL or log line. Body, strict: `{ "complaintId": "C-90018", "trackingCode": "2wwm zewz 2qon dmse" }` — any case, dashes and spaces optional. Returns 200 `{ "complaintId", "stage", "updatedAt" }`, where `stage` ∈ `RECEIVED`, `UNDER_REVIEW`, `ALERT_SENT`, `RESOLVED`, derived from the investigation status when one exists, else the complaint status. The response schema is strict, so no prediction field can leave. A wrong code, an unknown ID and a seeded (non-citizen) complaint are all the same 404. **Tests:** TC-SAFE-016 … TC-SAFE-018
 
 ---
 
@@ -450,6 +456,8 @@ Model version, artefact load time, inference latency histogram, request counts b
 | API-080 | GET | `/api/health` | all | 600/min | TC-API-080 |
 | API-090 | POST | `/api/demo/reset` | ADMIN, demo | 10/min | TC-API-060 |
 | API-091 | POST | `/api/role` | all | 30/min | TC-UI-080 |
+| API-100 | POST | `/api/citizen/reports` | CITIZEN | 5/min per IP | TC-SAFE-010 … 015 |
+| API-101 | POST | `/api/citizen/reports/status` | CITIZEN | 120/min | TC-SAFE-016 … 018 |
 
 `*` BANK access is scoped to objects reachable through alerts addressed to BANK; out-of-scope objects return 404.
 

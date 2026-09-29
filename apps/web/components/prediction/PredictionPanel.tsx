@@ -1,37 +1,22 @@
 "use client"; // mutation with in-flight state (RULE-frontend.md §Server vs client)
 
-import { useMutation } from "@tanstack/react-query";
+import { useState } from "react";
 import type { PredictionResponse } from "@cyberpulse/shared/zod/prediction";
+import { FactorBar } from "@/components/common/FactorBar";
 import { RiskBadge } from "@/components/common/RiskBadge";
 import { StatePanel } from "@/components/common/StatePanel";
+import { AlertModal } from "@/components/alerts/AlertModal";
 import { formatPaise, formatScorePercent, formatWindowIst } from "@/lib/formatters";
+import { usePrediction } from "./usePrediction";
 
 interface PredictionPanelProps {
   complaintId: string;
   initialPrediction: PredictionResponse | null;
 }
 
-interface ApiError {
-  error: { code: string; message: string };
-}
-
-async function requestPrediction(complaintId: string, forceRefresh: boolean): Promise<PredictionResponse> {
-  const res = await fetch("/api/predict", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ complaintId, forceRefresh }),
-  });
-  if (!res.ok) {
-    const body = (await res.json()) as ApiError;
-    throw new Error(body.error.message);
-  }
-  return res.json();
-}
-
 export function PredictionPanel({ complaintId, initialPrediction }: PredictionPanelProps) {
-  const mutation = useMutation({
-    mutationFn: (forceRefresh: boolean) => requestPrediction(complaintId, forceRefresh),
-  });
+  const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
+  const mutation = usePrediction(complaintId);
 
   const prediction = mutation.data ?? initialPrediction;
 
@@ -41,14 +26,25 @@ export function PredictionPanel({ complaintId, initialPrediction }: PredictionPa
         <h2 id="prediction-heading" className="text-base font-semibold text-slate-800">
           Prediction
         </h2>
-        <button
-          type="button"
-          onClick={() => mutation.mutate(true)}
-          disabled={mutation.isPending}
-          className="rounded-sm bg-sih-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-sih-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sih-blue-600 disabled:opacity-50"
-        >
-          {mutation.isPending ? "Analyzing…" : "Analyze Complaint"}
-        </button>
+        <div className="flex items-center gap-2">
+          {prediction && !mutation.isPending ? (
+            <button
+              type="button"
+              onClick={() => setIsAlertModalOpen(true)}
+              className="rounded-sm bg-red-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
+            >
+              Generate Alert
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => mutation.mutate(true)}
+            disabled={mutation.isPending}
+            className="rounded-sm bg-sih-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-sih-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sih-blue-600 disabled:opacity-50"
+          >
+            {mutation.isPending ? "Analyzing…" : "Analyze Complaint"}
+          </button>
+        </div>
       </div>
 
       <div aria-live="polite" className="mt-4">
@@ -62,11 +58,30 @@ export function PredictionPanel({ complaintId, initialPrediction }: PredictionPa
           <PredictionResult prediction={prediction} />
         )}
       </div>
+
+      {isAlertModalOpen && prediction && !mutation.isPending ? (
+        <AlertModal
+          prediction={{
+            predictionRef: prediction.predictionRef,
+            location: prediction.predictedLocation,
+            window: prediction.expectedWindow,
+            riskScore: prediction.riskScore,
+            riskLevel: prediction.riskLevel,
+            estimatedExposurePaise: prediction.estimatedExposurePaise,
+            factors: prediction.factors,
+          }}
+          onClose={() => setIsAlertModalOpen(false)}
+        />
+      ) : null}
     </section>
   );
 }
 
-function PredictionResult({ prediction }: { prediction: PredictionResponse }) {
+// Split so /demo's guided steps can reveal "hotspot prediction" and
+// "explanation" as separate steps from the same single prediction response,
+// rather than issuing a second request for a narrower view (AC-P7-03: step 3
+// issues exactly one real POST /api/predict).
+export function PredictionSummary({ prediction }: { prediction: PredictionResponse }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
@@ -103,36 +118,52 @@ function PredictionResult({ prediction }: { prediction: PredictionResponse }) {
         <h3 className="text-sm font-semibold text-slate-700">Ranked hotspots</h3>
         <ol className="mt-1 space-y-1 text-sm text-slate-600">
           {prediction.rankedHotspots.map((h) => (
-            <li key={h.h3Index} className="flex justify-between gap-2">
+            <li key={h.h3Index} className="flex items-start justify-between gap-2">
               <span>
-                {h.rank}. {h.name}
+                <span className="block">
+                  {h.rank}. {h.name}
+                </span>
+                <span className="block font-mono text-xs text-slate-400">
+                  {h.h3Index} · {h.lat.toFixed(5)}, {h.lon.toFixed(5)}
+                </span>
               </span>
-              <span className="font-mono text-xs text-slate-400">{formatScorePercent(h.score)}</span>
+              <span className="shrink-0 font-mono text-xs text-slate-400">{formatScorePercent(h.score)}</span>
             </li>
           ))}
         </ol>
       </div>
+    </div>
+  );
+}
 
-      <div>
-        <h3 className="text-sm font-semibold text-slate-700">Factors</h3>
-        {!prediction.explanationAvailable ? (
-          <p className="text-sm text-slate-600">Explanation could not be generated for this prediction.</p>
-        ) : (
-          <ul className="mt-1 space-y-1 text-sm text-slate-600">
+export function PredictionFactors({ prediction }: { prediction: PredictionResponse }) {
+  return (
+    <div>
+      <h3 className="text-sm font-semibold text-slate-700">Factors</h3>
+      {!prediction.explanationAvailable ? (
+        <p className="text-sm text-slate-600">Explanation could not be generated for this prediction.</p>
+      ) : (
+        <>
+          <p className="mt-1 text-xs text-slate-500">Contributions sum to 100% of the {prediction.riskLevel} risk score.</p>
+          <ul className="mt-1 divide-y divide-slate-100">
             {prediction.factors.map((f) => (
-              <li key={f.name} className="flex items-center justify-between gap-2">
-                <span>{f.name}</span>
-                <span className={f.direction === "INCREASES" ? "text-red-700" : "text-emerald-700"}>
-                  {f.direction === "INCREASES" ? "▲" : "▼"} {f.contribution.toFixed(1)}%
-                </span>
-              </li>
+              <FactorBar key={f.name} name={f.name} contribution={f.contribution} direction={f.direction} />
             ))}
           </ul>
-        )}
-        {prediction.clusteringFallback ? (
-          <p className="mt-1 text-xs text-slate-500">Clustering fallback — hotspot ranking used H3 aggregation alone.</p>
-        ) : null}
-      </div>
+        </>
+      )}
+      {prediction.clusteringFallback ? (
+        <p className="mt-1 text-xs text-slate-500">Clustering fallback — hotspot ranking used H3 aggregation alone.</p>
+      ) : null}
+    </div>
+  );
+}
+
+function PredictionResult({ prediction }: { prediction: PredictionResponse }) {
+  return (
+    <div className="space-y-4">
+      <PredictionSummary prediction={prediction} />
+      <PredictionFactors prediction={prediction} />
     </div>
   );
 }

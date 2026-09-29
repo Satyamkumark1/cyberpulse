@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "deliver",
+  "type": "workflow",
+  "input": "/Users/cashify/Downloads/cyberpulse-ai/docs/pilot-proposal/cyberpulse-workflow.json",
+  "output": "/Users/cashify/Downloads/cyberpulse-ai/docs/pilot-proposal/cyberpulse-workflow.html",
+  "specification": {
+    "sha256": "ed2ea892abe02f7f9a9eeb72e3789e5f86df4e57a0dfb58e4a7cbc42a46764c2",
+    "bytes": 2019
+  },
+  "artifact": {
+    "sha256": "3af7c3626ffdf4a6322aa12ad0f8bdd0a95944b628d05cadc9d82135e752b643",
+    "bytes": 801500
+  },
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "showcase",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  }
+}

@@ -8,6 +8,41 @@
       "when": 1789476110137,
       "tag": "0001_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789713636051,
+      "tag": "0002_add_guard_posts",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789714878726,
+      "tag": "0003_add_atm_locality",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789718366242,
+      "tag": "0004_add_atm_site_recipient",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789754958120,
+      "tag": "0005_add_guard_i4c_roles",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790256063591,
+      "tag": "0006_add_citizen_reports",
+      "breakpoints": true
     }
   ]
 }

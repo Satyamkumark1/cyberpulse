@@ -3,6 +3,7 @@ import { db } from "../client";
 
 export interface TraversalEdgeRow {
   id: number;
+  complaintId: number | null;
   fromAccountId: number;
   toAccountId: number;
   amountPaise: number;
@@ -25,6 +26,7 @@ export async function traverseFromComplaint(
 ): Promise<TraversalEdgeRow[]> {
   const rows = await db.execute<{
     id: number;
+    complaint_id: number | null;
     from_account_id: number;
     to_account_id: number;
     amount_paise: string;
@@ -33,7 +35,7 @@ export async function traverseFromComplaint(
     depth: number;
   }>(sql`
     WITH RECURSIVE trail AS (
-      SELECT t.id, t.from_account_id, t.to_account_id, t.amount_paise,
+      SELECT t.id, t.complaint_id, t.from_account_id, t.to_account_id, t.amount_paise,
              t.timestamp, t.channel, 1 AS depth,
              ARRAY[t.from_account_id, t.to_account_id] AS visited
       FROM transactions t
@@ -41,7 +43,7 @@ export async function traverseFromComplaint(
 
       UNION ALL
 
-      SELECT t.id, t.from_account_id, t.to_account_id, t.amount_paise,
+      SELECT t.id, t.complaint_id, t.from_account_id, t.to_account_id, t.amount_paise,
              t.timestamp, t.channel, tr.depth + 1,
              tr.visited || t.to_account_id
       FROM transactions t
@@ -49,8 +51,13 @@ export async function traverseFromComplaint(
       WHERE tr.depth < ${maxDepth}
         AND NOT (t.to_account_id = ANY(tr.visited))
     )
-    SELECT id, from_account_id, to_account_id, amount_paise, timestamp, channel, depth
-    FROM trail
+    SELECT id, complaint_id, from_account_id, to_account_id, amount_paise, timestamp, channel, depth
+    FROM (
+      SELECT DISTINCT ON (id) id, complaint_id, from_account_id, to_account_id, amount_paise, timestamp, channel, depth
+      FROM trail
+      ORDER BY id, depth
+    ) AS deduplicated
+    ORDER BY depth, id
     LIMIT ${rowLimit}
   `);
 
@@ -62,6 +69,7 @@ export async function traverseFromComplaint(
   // looks like a correctness bug in the caller instead of a type mismatch here.
   return Array.from(rows).map((r) => ({
     id: Number(r.id),
+    complaintId: r.complaint_id === null ? null : Number(r.complaint_id),
     fromAccountId: Number(r.from_account_id),
     toAccountId: Number(r.to_account_id),
     amountPaise: Number(r.amount_paise),

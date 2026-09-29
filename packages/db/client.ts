@@ -11,7 +11,16 @@ if (!databaseUrl) {
 // One pooled connection per process. Neon and local Postgres both accept
 // this client (ADR-003) — pooling is mandatory against Neon's free-tier
 // connection limits.
-const queryClient = postgres(databaseUrl, { max: 10 });
+//
+// `idle_timeout` matters more than it looks: without it postgres.js holds
+// every connection it ever opens until the process exits. A production build
+// instantiates this module once, so 10 is 10 — but `next dev` re-instantiates
+// it on each hot reload, and the previous pool's connections stay open. A
+// working session of ordinary edits walks the server up to `max_connections`,
+// at which point every query fails with "remaining connection slots are
+// reserved" and the UI reports the prediction service as unavailable — a
+// confusing symptom for a cause that has nothing to do with the ML service.
+const queryClient = postgres(databaseUrl, { max: 10, idle_timeout: 20 });
 
 export const db = drizzle(queryClient, { schema });
 export * as dbSchema from "./schema";

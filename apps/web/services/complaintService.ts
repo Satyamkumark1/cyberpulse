@@ -115,6 +115,22 @@ export async function list(query: ComplaintListQuery, ctx: RequestContext) {
   };
 }
 
+// Powers the state filter on the complaints list — distinct, scoped the same
+// way as `list()` so a BANK caller can't discover states outside their scope
+// through the filter options themselves.
+export async function listStates(ctx: RequestContext): Promise<string[]> {
+  requireCapability(ctx.role, "complaints:list");
+
+  const conditions = [complaintScope(ctx.role)].filter((c): c is SQL => c !== undefined);
+  const rows = await db
+    .selectDistinct({ state: complaints.state })
+    .from(complaints)
+    .where(and(...conditions))
+    .orderBy(asc(complaints.state));
+
+  return rows.map((r) => r.state);
+}
+
 export async function getWithContext(complaintId: string, ctx: RequestContext) {
   requireCapability(ctx.role, "complaints:read");
   if (!/^C-\d{5}$/.test(complaintId)) {

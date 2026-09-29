@@ -3,7 +3,7 @@ import { PredictRequest } from "@cyberpulse/shared/zod/predict-request";
 import { toErrorResponse } from "@/lib/errors";
 import { withRateLimit } from "@/lib/rateLimit";
 import { getRequestId } from "@/lib/requestId";
-import { resolveRole, type RequestContext } from "@/services/lib/auth";
+import { resolveOrigin, resolveRole, type RequestContext } from "@/services/lib/auth";
 import { predict } from "@/services/predictionService";
 
 // architecture/api-design.md API-010. Handler shape per RULE-backend.md:
@@ -13,7 +13,7 @@ export const POST = withRateLimit(RATE_LIMITS.predict, (req) => `${resolveRole(r
   const requestId = getRequestId(req);
   try {
     const input = PredictRequest.parse(await req.json());
-    const ctx: RequestContext = { role: resolveRole(req), requestId, origin: "USER" };
+    const ctx: RequestContext = { role: resolveRole(req), requestId, origin: resolveOrigin(req) };
 
     const { prediction, created } = await predict(input, ctx);
     return Response.json(prediction, {

@@ -11,6 +11,7 @@ import argparse
 import csv
 import math
 import random
+import re
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -36,6 +37,11 @@ from patterns import (
 )
 from regions import REGIONS
 
+# Share the walkthrough identifier with the web app.
+_SHARED_CONSTANTS = (Path(__file__).resolve().parents[2] / "packages/shared/constants.ts").read_text()
+DEMO_COMPLAINT_IDS = re.findall(r'"(C-\d{5})"', re.search(r'export const DEMO_COMPLAINT_IDS = \[(.*?)\] as const;', _SHARED_CONSTANTS, re.S).group(1))
+DEMO_COMPLAINT_ID = DEMO_COMPLAINT_IDS[0]
+
 H3_RES_HOTSPOT = 8
 H3_RES_DENSITY = 9
 
@@ -49,7 +55,7 @@ CHANNELS_BY_FRAUD = {
     "CARD_FRAUD": "CARD",
 }
 
-VOLUME_FLOORS = {"complaints": 500, "accounts": 10_000, "transactions": 50_000, "withdrawals": 2_000, "atms": 500}
+VOLUME_FLOORS = {"complaints": 500, "accounts": 10_000, "transactions": 50_000, "withdrawals": 2_000, "atms": 500, "guard_posts": 1_000}
 VOLUME_DEFAULTS = {"complaints": 500, "accounts": 12_000, "transactions": 60_000, "withdrawals": 2_400, "atms": 520}
 
 
@@ -136,6 +142,14 @@ class Withdrawal:
     h3_r8: str
 
 
+@dataclass
+class GuardPost:
+    post_id: str
+    atm_id: str
+    shift_start_hour_ist: int
+    shift_end_hour_ist: int
+
+
 BANKS = ("SBI-Sim", "HDFC-Sim", "ICICI-Sim", "Axis-Sim", "PNB-Sim", "BOI-Sim")
 
 
@@ -174,6 +188,38 @@ def build_atms(rng: random.Random, count: int, disabled: set[str]) -> list[Atm]:
                 )
             )
     return atms
+
+
+DAY_SHIFTS = ((6, 14), (14, 22))
+NIGHT_SHIFT = (22, 6)
+
+
+def build_guard_posts(rng: random.Random, atms: list[Atm]) -> list["GuardPost"]:
+    """Staffed duty positions, one set per ATM.
+
+    A post is an operational asset, not a person: it carries an identifier, the
+    ATM it covers and a recurring IST shift, and there is deliberately nowhere
+    to put a name or a phone number (FR-01.7, `pii_scan.py`, TC-SEC-022). Who
+    stands at a post on a given day is the operating bank's record.
+
+    Every ATM gets the two day shifts. Historical-hotspot ATMs also carry a
+    night post, which is the only place the planted pattern shows up here —
+    it is derived from `is_hot`, never sampled, so the same seed produces the
+    same roster.
+    """
+    posts: list[GuardPost] = []
+    for atm in atms:
+        shifts = list(DAY_SHIFTS) + ([NIGHT_SHIFT] if atm.is_hot else [])
+        for start, end in shifts:
+            posts.append(
+                GuardPost(
+                    post_id=f"GRD-{len(posts) + 1:05d}",
+                    atm_id=atm.atm_id,
+                    shift_start_hour_ist=start,
+                    shift_end_hour_ist=end,
+                )
+            )
+    return posts
 
 
 def build_accounts(rng: random.Random, count: int, n_victims: int, base_time: datetime) -> list[Account]:
@@ -244,6 +290,7 @@ def generate(
     n_withdrawals_target = max(VOLUME_FLOORS["withdrawals"], round(VOLUME_DEFAULTS["withdrawals"] * scale))
 
     atms = build_atms(rng, n_atms, disabled_patterns)
+    guard_posts = build_guard_posts(rng, atms)
     atms_by_zone = group_atms_by_zone(atms)
     accounts = build_accounts(rng, n_accounts, n_complaints, base_time)
 
@@ -300,6 +347,12 @@ def generate(
         amount = sample_lognormal_paise(rng, mean_log + 6, sigma_log)  # +6 -> rupee-ish scale
         victim = victims[i]
         complaint_id = f"C-{i + 1:05d}"
+        # Swap IDs so even the minimum corpus contains the demo complaint,
+        # without collisions when larger corpora reach its numeric ID.
+        if i == 0:
+            complaint_id = DEMO_COMPLAINT_ID
+        elif complaint_id == DEMO_COMPLAINT_ID:
+            complaint_id = "C-00001"
 
         # Report delay: how long after the first fraud transaction the victim
         # files the complaint. Drawn wide enough (mean 45 min, tail to 4 days)
@@ -451,6 +504,7 @@ def generate(
     write_atms_csv(out_dir / "atms.csv", atms)
     write_transactions_csv(out_dir / "transactions.csv", transactions)
     write_withdrawals_csv(out_dir / "withdrawals.csv", withdrawals)
+    write_guard_posts_csv(out_dir / "guard_posts.csv", guard_posts)
 
     return {
         "complaints": len(complaints),
@@ -458,6 +512,7 @@ def generate(
         "atms": len(atms),
         "transactions": len(transactions),
         "withdrawals": len(withdrawals),
+        "guard_posts": len(guard_posts),
     }
 
 
@@ -517,9 +572,9 @@ def write_accounts_csv(path: Path, rows: list[Account]) -> None:
 def write_atms_csv(path: Path, rows: list[Atm]) -> None:
     with path.open("w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["atmId", "bankName", "latitude", "longitude", "h3R8", "h3R9", "city", "district", "state"])
+        w.writerow(["atmId", "bankName", "latitude", "longitude", "h3R8", "h3R9", "locality", "city", "district", "state"])
         for a in rows:
-            w.writerow([a.atm_id, a.bank_name, a.lat, a.lon, a.h3_r8, a.h3_r9, a.city, a.district, a.state])
+            w.writerow([a.atm_id, a.bank_name, a.lat, a.lon, a.h3_r8, a.h3_r9, a.zone_name, a.city, a.district, a.state])
 
 
 def write_transactions_csv(path: Path, rows: list[Txn]) -> None:
@@ -528,6 +583,14 @@ def write_transactions_csv(path: Path, rows: list[Txn]) -> None:
         w.writerow(["transactionId", "complaintId", "fromAccountId", "toAccountId", "amountPaise", "timestamp", "channel", "latitude", "longitude", "h3R8", "riskIndicator", "hopIndex"])
         for t in rows:
             w.writerow([t.transaction_id, t.complaint_id or "", t.from_account_id, t.to_account_id, t.amount_paise, iso(t.timestamp), t.channel, t.lat if t.lat is not None else "", t.lon if t.lon is not None else "", t.h3_r8 or "", t.risk_indicator, t.hop_index])
+
+
+def write_guard_posts_csv(path: Path, rows: list["GuardPost"]) -> None:
+    with path.open("w", newline="", encoding="utf-8") as fh:
+        w = csv.writer(fh)
+        w.writerow(["postId", "atmId", "shiftStartHourIst", "shiftEndHourIst"])
+        for g in rows:
+            w.writerow([g.post_id, g.atm_id, g.shift_start_hour_ist, g.shift_end_hour_ist])
 
 
 def write_withdrawals_csv(path: Path, rows: list[Withdrawal]) -> None:
@@ -555,7 +618,7 @@ def main() -> None:
     disabled = set(args.disable_pattern)
     row_counts = generate(args.seed, args.out_dir, args.scale, disabled)
 
-    files = ["complaints.csv", "accounts.csv", "atms.csv", "transactions.csv", "withdrawals.csv"]
+    files = ["complaints.csv", "accounts.csv", "atms.csv", "transactions.csv", "withdrawals.csv", "guard_posts.csv"]
     write_manifest(args.out_dir, args.seed, files, row_counts)
 
     for name, count in row_counts.items():

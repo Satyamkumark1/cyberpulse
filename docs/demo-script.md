@@ -118,7 +118,20 @@ Thirty-five seconds is the longest block in the script, deliberately. Explainabi
 
 ---
 
-## If the service is cold or down
+## Citizen segment — Scam Shield (FEAT-17), about 60 s
+
+Run it before the Opening when the slot allows, or on its own when an evaluator asks what the product does for the public. **Not yet timed against the 180 s budget** — rehearse it twice (phase-9.md exit criteria) before adding it to the main run.
+
+1. **Phone view, `/safety/check`.** Tick three digital-arrest statements.
+   > "A citizen gets a 'digital arrest' call. Three red flags, each with the reason and the public advisory it comes from — and no score. A person deciding whether to hang up needs reasons, not a probability."
+2. **`/safety/report`.** Show 1930 first, then file Delhi, UPI fraud, any amount. Read out the complaint ID; do not read the tracking code aloud.
+   > "Someone who already paid is sent to 1930 first. The form asks three things and nothing personal. And it says plainly that this prototype does not forward the report."
+3. **Officer side (LEA).** Open the new `C-9####` in Complaints; Analyze; Generate Alert.
+   > "The same report, in the officer queue, through the same model. It has no transaction trail yet, so the model says how confident it is — and that is what it shows."
+4. **Back on the phone, `/safety/status`.** Enter the ID and code.
+   > "The citizen sees 'Alert sent to bank and police' — and nothing about where or when. That stays with the police."
+
+**Reset Demo** clears every citizen report along with the demo alerts.
 
 Do not apologise or improvise. Say:
 

@@ -23,6 +23,7 @@ function toApiShape(
   hotspot: typeof hotspots.$inferSelect,
   factors: (typeof riskFactors.$inferSelect)[],
   complaintBusinessId: string,
+  pipelineStages?: PredictionResponse["pipelineStages"],
 ): PredictionResponse {
   return {
     predictionRef: prediction.predictionRef,
@@ -56,6 +57,7 @@ function toApiShape(
     featureSchemaVersion: prediction.featureSchemaVersion,
     inferenceMs: prediction.inferenceMs ?? undefined,
     createdAt: prediction.createdAt,
+    pipelineStages,
   };
 }
 
@@ -144,6 +146,7 @@ export async function predict(input: PredictInput, ctx: RequestContext): Promise
     complaint.city,
     complaint.district,
     complaint.state,
+    complaint.complaintTimestamp,
   );
 
   const mlRequest: MlPredictRequest = {
@@ -257,5 +260,8 @@ export async function predict(input: PredictInput, ctx: RequestContext): Promise
     return { hotspot: hotspotRow, prediction: predictionRow, factors: factorRows };
   });
 
-  return { prediction: toApiShape(prediction, hotspot, factors, complaint.complaintId), created: true };
+  return {
+    prediction: toApiShape(prediction, hotspot, factors, complaint.complaintId, mlResponse.pipelineStages),
+    created: true,
+  };
 }

@@ -49,8 +49,26 @@ export type AlertStatus = (typeof ALERT_STATUSES)[number];
 export const ALERT_SEVERITIES = ["LOW", "MEDIUM", "HIGH"] as const;
 export type AlertSeverity = (typeof ALERT_SEVERITIES)[number];
 
-export const RECIPIENT_KINDS = ["LEA", "BANK", "I4C"] as const;
+export const RECIPIENT_KINDS = ["LEA", "BANK", "I4C", "ATM_SITE"] as const;
 export type RecipientKind = (typeof RECIPIENT_KINDS)[number];
+
+/**
+ * How each destination reads to an officer. Held here, not in a component, so
+ * the alert modal and the alert detail page cannot drift apart.
+ *
+ * `ATM_SITE` addresses the staffed duty **post** at the predicted ATM, never a
+ * named individual: this schema holds no guard identity or contact number, and
+ * the operating bank cascades to whoever is on shift (see DEC-010).
+ */
+export const RECIPIENT_LABELS: Record<RecipientKind, { label: string; detail: string }> = {
+  LEA: { label: "Local Police — Cyber Crime Cell", detail: "District cyber crime unit for the predicted area" },
+  BANK: { label: "Bank Cyber Cell — Fraud Desk", detail: "Reviews the linked accounts in the money trail" },
+  I4C: { label: "I4C — Cybercrime Coordination Centre", detail: "National coordination" },
+  ATM_SITE: {
+    label: "ATM Site Security — Duty Post",
+    detail: "The staffed post at the predicted ATM; the operating bank cascades to whoever is on shift",
+  },
+};
 
 export const INVESTIGATION_STATUSES = [
   "NEW",
@@ -65,8 +83,20 @@ export type InvestigationStatus = (typeof INVESTIGATION_STATUSES)[number];
 export const PRIORITY_LEVELS = ["LOW", "MEDIUM", "HIGH"] as const;
 export type PriorityLevel = (typeof PRIORITY_LEVELS)[number];
 
-export const ACTOR_ROLES = ["LEA", "BANK", "ADMIN"] as const;
+// GUARD (ATM Site Guard) and I4C (Intelligence Analyst, I4C CIS Division —
+// PER-02) extend the same asserted-not-verified role model ADR-019 already
+// uses for LEA/BANK/ADMIN — see ADR-021 and decision-log DEC-011. Neither
+// stores or implies a real identity; GUARD's dashboard content stays
+// positional/duty-post data only, never a specific assignment.
+// CITIZEN (ADR-022, DEC-013) is the public Scam Shield caller: no officer
+// capability, and it stores no identity either.
+export const ACTOR_ROLES = ["LEA", "BANK", "ADMIN", "GUARD", "I4C", "CITIZEN"] as const;
 export type ActorRole = (typeof ACTOR_ROLES)[number];
+
+// FEAT-17. The only progress a citizen ever sees for their own report —
+// derived from the investigation (or complaint) status, never from a prediction.
+export const CITIZEN_STAGES = ["RECEIVED", "UNDER_REVIEW", "ALERT_SENT", "RESOLVED"] as const;
+export type CitizenStage = (typeof CITIZEN_STAGES)[number];
 
 export const RECORD_ORIGINS = ["SEED", "USER", "DEMO"] as const;
 export type RecordOrigin = (typeof RECORD_ORIGINS)[number];

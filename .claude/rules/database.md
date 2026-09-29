@@ -11,7 +11,7 @@ Read with `architecture/database-design.md`.
 2. **Time is `timestamptz` UTC.** IST rendering happens at the edge.
 3. **No personal-data column. Ever.** No name, address, phone, email, government ID, real account number or IP. Not "temporarily". TC-SEC-022 introspects the whole schema.
 4. **Constraints live in the database**, not only in Zod. If it is an invariant, Postgres enforces it.
-5. **No hard deletes** except the demo reset, scoped by `origin = 'DEMO'`.
+5. **No hard deletes** except the demo reset, scoped by `origin = 'DEMO'` — including every row that depends on a `DEMO`-origin complaint, whatever that row's own origin (FEAT-17 citizen reports, DEC-013).
 6. **Every index names the query it serves.** An index whose query is deleted is deleted with it.
 
 ---

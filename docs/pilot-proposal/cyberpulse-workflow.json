@@ -1,0 +1,28 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {"title": "CyberPulse AI: proposed operational fit", "locale": "en", "quality_profile": "showcase"},
+  "lanes": [
+    {"id": "sources", "label": "Authorised inputs"},
+    {"id": "analysis", "label": "CyberPulse analysis"},
+    {"id": "response", "label": "Human response"}
+  ],
+  "mainPath": ["records", "forecast", "review", "decision"],
+  "nodes": [
+    {"id": "records", "lane": "sources", "col": 0, "width": 170, "type": "database", "label": "Case records", "sublabel": "complaint + linked records"},
+    {"id": "forecast", "lane": "analysis", "col": 1, "width": 170, "type": "backend", "label": "Rank cash-out areas", "sublabel": "time window + explanation"},
+    {"id": "review", "lane": "response", "col": 2, "type": "security", "label": "Officer review", "sublabel": "verify and prioritise"},
+    {"id": "decision", "lane": "response", "col": 3, "width": 170, "type": "external", "label": "Authorised action", "sublabel": "existing agency channels"},
+    {"id": "bank", "lane": "sources", "col": 2, "width": 170, "type": "external", "label": "Bank coordination", "sublabel": "existing fund protection"}
+  ],
+  "edges": [
+    {"from": "records", "to": "forecast", "label": "permitted data", "role": "main", "variant": "emphasis"},
+    {"from": "forecast", "to": "review", "label": "ranked leads", "role": "main", "variant": "emphasis"},
+    {"from": "review", "to": "decision", "label": "human decision", "role": "main", "variant": "emphasis"},
+    {"from": "records", "to": "bank", "label": "continues in parallel", "role": "branch", "variant": "dashed"}
+  ],
+  "cards": [
+    {"dot": "cyan", "title": "Integration is proposed", "items": ["No live bank or NCRP connection is implemented.", "Access depends on partner authorisation and data availability."]},
+    {"dot": "emerald", "title": "Officer control", "items": ["Forecasts are investigative leads, not proof of identity.", "CyberPulse does not freeze accounts or dispatch police."]}
+  ]
+}

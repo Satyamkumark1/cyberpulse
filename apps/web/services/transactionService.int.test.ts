@@ -321,7 +321,12 @@ describe("transactionService simulation — architecture/api-design.md API-023",
     await expect(simulationStart(lea)).rejects.toBeInstanceOf(ForbiddenError);
   });
 
-  it("allows a non-ADMIN role when the request originates from the demo route", async () => {
-    await expect(simulationStart(demoLea)).resolves.toMatchObject({ status: "RUNNING" });
+  it("denies GUARD and I4C too (ADR-021 — neither holds simulation:control)", async () => {
+    await expect(simulationStart({ role: "GUARD", requestId: "test", origin: "USER" })).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(simulationStart({ role: "I4C", requestId: "test", origin: "USER" })).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  it("denies a non-ADMIN role even with a DEMO origin — origin is caller-controlled metadata, not a grant", async () => {
+    await expect(simulationStart(demoLea)).rejects.toBeInstanceOf(ForbiddenError);
   });
 });

@@ -39,7 +39,7 @@ Scope is a **query predicate**, never a post-filter — a post-filter still runs
 
 ## Audit
 
-Six actions are audited: alert dispatch, alert acknowledgement, investigation status change, settings update, demo reset, role switch.
+Seven actions are audited: alert dispatch, alert acknowledgement, investigation status change, settings update, demo reset, role switch, citizen report submission (FEAT-17, ADR-022).
 
 `auditService.record` requires a transaction handle **by signature**. There is no overload that writes outside one, and adding one would be a Critical defect. The application's database role holds `INSERT` and `SELECT` on `audit_events` only.
 

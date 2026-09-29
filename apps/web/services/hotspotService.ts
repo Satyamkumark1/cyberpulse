@@ -1,6 +1,6 @@
 import { gridDisk, cellToLatLng } from "h3-js";
 import { db, dbSchema } from "@cyberpulse/db";
-import { and, desc, eq, gte, inArray, lte, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lt, lte, sql, type SQL } from "drizzle-orm";
 import { CANDIDATE_CELL_CAP } from "@cyberpulse/shared/constants";
 import type { RiskLevel } from "@cyberpulse/shared/enums";
 import { NotFoundError } from "@/lib/errors";
@@ -46,17 +46,22 @@ export async function candidatesForComplaint(
   complaintCity: string,
   complaintDistrict: string,
   complaintState: string,
+  complaintTimestamp: string,
 ): Promise<CandidateCellPayload[]> {
   const [withdrawalCounts, atmRows] = await Promise.all([
-    db.select({ h3: withdrawals.h3R8, count: sql<number>`count(*)::int` }).from(withdrawals).groupBy(withdrawals.h3R8),
     db
-      .select({ h3: atms.h3R8, city: atms.city, district: atms.district, state: atms.state })
+      .select({ h3: withdrawals.h3R8, count: sql<number>`count(*)::int` })
+      .from(withdrawals)
+      .where(lt(withdrawals.timestamp, complaintTimestamp))
+      .groupBy(withdrawals.h3R8),
+    db
+      .select({ h3: atms.h3R8, locality: atms.locality, city: atms.city, district: atms.district, state: atms.state })
       .from(atms),
   ]);
   const withdrawalCountByCell = new Map(withdrawalCounts.map((r) => [r.h3, r.count]));
 
   const atmCountByCell = new Map<string, number>();
-  const locationByCell = new Map<string, { city: string; district: string; state: string }>();
+  const locationByCell = new Map<string, { locality: string | null; city: string; district: string; state: string }>();
   for (const atm of atmRows) {
     atmCountByCell.set(atm.h3, (atmCountByCell.get(atm.h3) ?? 0) + 1);
     if (!locationByCell.has(atm.h3)) locationByCell.set(atm.h3, atm);
@@ -66,7 +71,7 @@ export async function candidatesForComplaint(
     .select({ h3: withdrawals.h3R8, count: sql<number>`count(*)::int` })
     .from(withdrawals)
     .innerJoin(atms, eq(atms.id, withdrawals.atmId))
-    .where(eq(atms.state, complaintState))
+    .where(and(eq(atms.state, complaintState), lt(withdrawals.timestamp, complaintTimestamp)))
     .groupBy(withdrawals.h3R8)
     .orderBy(sql`count(*) desc`)
     .limit(HISTORICAL_TOP_N);
@@ -91,7 +96,10 @@ export async function candidatesForComplaint(
       atmDensity: atmCount / ringAreaKm2,
       historicalHotspotScore: withdrawalCount / (withdrawalCount + HOTSPOT_SCORE_SMOOTHING),
       withdrawalCount,
-      name: location?.city ?? complaintCity,
+      // The locality distinguishes the five candidate cells that otherwise all
+      // render as the same city name. Falls back to the city where a cell has
+      // no ATM to take a locality from — never to an invented place name.
+      name: location?.locality ? `${location.locality}, ${location.city}` : (location?.city ?? complaintCity),
       district: location?.district ?? complaintDistrict,
       state: location?.state ?? complaintState,
     };
@@ -194,7 +202,8 @@ export async function getDetail(h3Index: string, ctx: RequestContext) {
     .from(predictions)
     .innerJoin(complaints, eq(complaints.id, predictions.complaintId))
     .where(eq(predictions.hotspotId, hotspot.id))
-    .orderBy(desc(predictions.createdAt))
+    .groupBy(complaints.complaintId, complaints.fraudType, complaints.amountPaise)
+    .orderBy(desc(sql`max(${predictions.createdAt})`))
     .limit(RELATED_COMPLAINTS_LIMIT);
 
   return {

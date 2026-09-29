@@ -4,7 +4,7 @@ import { RiskBadge } from "@/components/common/RiskBadge";
 import { StatePanel } from "@/components/common/StatePanel";
 import { formatPaise, formatScorePercent, formatTimestampIst } from "@/lib/formatters";
 import { resolveRoleFromNextHeaders } from "@/services/lib/auth";
-import { list, type ComplaintListQuery } from "@/services/complaintService";
+import { list, listStates, type ComplaintListQuery } from "@/services/complaintService";
 
 // Server Component — reads directly through the service layer, per
 // RULE-frontend.md §Server vs client (no client state, no route round trip).
@@ -14,19 +14,23 @@ export default async function ComplaintsPage({
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const params = await searchParams;
+  const state = params.state || undefined;
   const query: ComplaintListQuery = {
     page: Number(params.page ?? 1) || 1,
     pageSize: 25,
     sort: "complaintTimestamp",
     order: "desc",
+    ...(state ? { state } : {}),
   };
   const role = await resolveRoleFromNextHeaders();
   const requestId = `req_${randomUUID()}`;
+  const ctx = { role, requestId, origin: "USER" as const };
 
   let result: Awaited<ReturnType<typeof list>> | null = null;
+  let states: string[] = [];
   let failed = false;
   try {
-    result = await list(query, { role, requestId, origin: "USER" });
+    [result, states] = await Promise.all([list(query, ctx), listStates(ctx)]);
   } catch {
     failed = true;
   }
@@ -35,6 +39,26 @@ export default async function ComplaintsPage({
     <div>
       <h1 className="text-xl font-semibold text-slate-800">Complaints</h1>
       <p className="mt-1 text-sm text-slate-600">{result ? `${result.total} complaints` : ""}</p>
+
+      <form className="mt-4 flex flex-wrap items-end gap-3" method="get">
+        <label className="text-sm text-slate-700">
+          State
+          <select name="state" defaultValue={state ?? ""} className="mt-1 block rounded-sm border border-slate-300 px-2 py-1.5 text-sm">
+            <option value="">All states</option>
+            {states.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          type="submit"
+          className="rounded-sm bg-sih-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-sih-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sih-blue-600"
+        >
+          Apply
+        </button>
+      </form>
 
       {failed ? (
         <div className="mt-4">

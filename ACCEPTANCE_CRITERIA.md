@@ -466,22 +466,29 @@ Standard preconditions, referenced as **[STD]**:
 
 ## FEAT-14 — Demo Mode
 
-**AC-014-01 — One-click scenario**
+**AC-014-01 — Ten-complaint concurrent scenario (DEC-012)**
 - **Given** [STD] and the dashboard open
 - **When** "RUN DEMO SCENARIO" is clicked
-- **Then** complaint `C-10284` loads, a processing indication is shown, exactly one real `POST /api/predict` is issued, and the prediction, map highlight, explanation and money-trail graph are all displayed
-- **And** the whole sequence completes within 15 seconds on the target machine.
+- **Then** all ten complaints in `DEMO_COMPLAINT_IDS` load, a processing indication is shown per complaint, and exactly ten real `POST /api/predict` calls are issued concurrently — one per distinct complaint, not staggered one-at-a-time
+- **And** each complaint's own prediction, hotspot table row, explanation and alert control display independently once that complaint's own call settles.
 
 **AC-014-02 — No hard-coded demo values**
 - **Given** the demo scenario has run
-- **When** the displayed risk percentage is compared to the network response
-- **Then** it equals `round(response.riskScore * 100)` for that specific response, and differs if the API is made to return a different score.
+- **When** any row's displayed risk percentage is compared to that row's own network response
+- **Then** it equals `round(response.riskScore * 100)` for that specific complaint's response, differs if the API is made to return a different score for that complaint, and never matches a different row's response.
 
 **AC-014-03 — Guided flow**
 - **Given** `/demo`
 - **When** the flow is stepped through
-- **Then** exactly six steps are presented in order: complaint, money-trail graph, AI analysis, hotspot prediction, explanation, alert
+- **Then** exactly six steps are presented in order: complaint, money-trail, AI analysis, hotspot prediction, explanation, alert — each rendering all ten complaints
 - **And** each step has a visible step indicator and a forward control.
+
+**AC-014-06 — Partial failure does not block the run (FR-19.4)**
+- **Given** exactly one of the ten complaints' `/api/predict` calls is made to fail
+- **When** the scenario runs
+- **Then** that complaint's prediction stages 3–6 show the degraded message with no prediction-derived score, window, estimated exposure or other prediction-derived currency; its stage-1 reported amount may remain visible
+- **And** the other nine complaints complete normally and the run still advances past step 3
+- **And** only when all ten fail does the run freeze at step 3.
 
 **AC-014-04 — Reset**
 - **Given** a demo run has generated alerts and investigations
@@ -532,6 +539,69 @@ Standard preconditions, referenced as **[STD]**:
 - **When** `GET /api/health` is called
 - **Then** the response is 200 with `web`, `database` and `mlService` each reporting `status` and `latencyMs`
 - **And** stopping the ML service changes `mlService.status` to `down` and the overall status to `degraded` within one poll interval.
+
+---
+
+## FEAT-17 — Scam Shield
+
+**AC-017-01 — Notices on every citizen route**
+- **Given** any `/safety` route, in English or Hindi
+- **When** the page is rendered
+- **Then** the prototype badge, the global disclaimer and the exact sentence "This prototype does not send your report to police or banks. To report, call 1930 or use cybercrime.gov.in." are visible.
+
+**AC-017-02 — Scam Check verdict**
+- **Given** a scenario on `/safety/check`
+- **When** zero, one, or two or more statements are ticked
+- **Then** the verdict is respectively "No red flags", "Be careful" or "Stop", with the count of the citizen's own ticks
+- **And** no percentage, score or probability appears anywhere on the page.
+
+**AC-017-03 — Cited reasons**
+- **Given** any Scam Check statement
+- **When** it is ticked
+- **Then** its reason and the name of its public source are shown.
+
+**AC-017-04 — Verify stays on the device**
+- **Given** `/safety/verify`
+- **When** a link, a number and a UPI ID are checked
+- **Then** each returns the documented level and reason (`phase-9.md` §4.3)
+- **And** no request is made to `/api/*`.
+
+**AC-017-05 — Report creates a complaint atomically**
+- **Given** a valid fraud type, amount and seeded city
+- **When** the report is submitted
+- **Then** the response is 201 with a `C-9####` complaint ID and a tracking code
+- **And** one `DEMO`-origin complaint, one `citizen_reports` row and one `CITIZEN_REPORT_SUBMITTED` audit event exist, or — if any write fails — none do.
+
+**AC-017-06 — Derived fields rejected**
+- **Given** a report body carrying `complaintId`, `status`, `origin`, `victimLat`, `victimLon`, `victimH3R8`, `district`, `state`, `complaintTimestamp` or any unknown key
+- **When** it is submitted
+- **Then** the response is 400 and nothing is written.
+
+**AC-017-07 — Indistinguishable 404**
+- **Given** a citizen complaint
+- **When** its status is requested with a wrong code, and a non-existent ID is requested with any code
+- **Then** both responses are 404 with byte-identical bodies (same request ID supplied).
+
+**AC-017-08 — Stage only**
+- **Given** a valid complaint ID and tracking code
+- **When** the status is requested
+- **Then** the response has exactly the keys `complaintId`, `stage` and `updatedAt`
+- **And** the status page shows no percentage, rupee amount, time range, hotspot or window.
+
+**AC-017-09 — Role boundary**
+- **Given** the CITIZEN role
+- **When** any of the 22 officer capabilities is exercised
+- **Then** the response is 403; and every other role receives 403 on both citizen capabilities.
+
+**AC-017-10 — The chain reaches the citizen**
+- **Given** a citizen report, and an officer who analyses it and dispatches an alert
+- **When** the citizen checks the status
+- **Then** the current stage reads "Alert sent to bank and police".
+
+**AC-017-11 — Reset clears citizen reports only**
+- **Given** a citizen complaint with a USER-origin prediction, investigation and alert made on it
+- **When** demo reset runs
+- **Then** all of them are deleted, the confirmation names the count, and the number of seed complaints and seed predictions is unchanged.
 
 ---
 

@@ -64,6 +64,14 @@ class Factor(BaseModel):
     direction: Literal['INCREASES', 'REDUCES']
 
 
+class PipelineStage(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    name: str
+    durationMs: int = Field(..., ge=0)
+
+
 class PredictionResponse(BaseModel):
     """
     POST /api/predict 201 response — the persisted row (architecture/api-design.md API-010). Every value here comes from the model; none may be hard-coded in application code (TC-INT-010, TC-INT-012).
@@ -89,3 +97,7 @@ class PredictionResponse(BaseModel):
     featureSchemaVersion: str
     inferenceMs: int | None = Field(None, ge=0)
     createdAt: AwareDatetime
+    pipelineStages: list[PipelineStage] | None = Field(
+        None,
+        description="Per-stage inference timings, present only on a freshly-computed prediction (never on one re-served from `predictions`) — what /demo's step 3 progress reads (architecture/api-design.md ML-001, AC-P7-04). Not persisted.",
+    )

@@ -8,7 +8,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { DEFAULT_THRESHOLD_HIGH, DEFAULT_THRESHOLD_MEDIUM, MODEL_VERSION } from "@cyberpulse/shared/constants";
+import { DEMO_COMPLAINT_IDS, DEFAULT_THRESHOLD_HIGH, DEFAULT_THRESHOLD_MEDIUM, MODEL_VERSION } from "@cyberpulse/shared/constants";
 import type { AccountType, FraudType, RiskIndicator, TxnChannel } from "@cyberpulse/shared/enums";
 import { sql } from "drizzle-orm";
 import { db } from "../client";
@@ -19,7 +19,7 @@ const DATA_DIR = join(import.meta.dirname, "..", "..", "..", "data", "generated"
 const ALL_TABLES = [
   "analytics_events", "audit_events", "investigation_notes", "investigations",
   "alerts", "risk_factors", "predictions", "simulation_events",
-  "withdrawals", "transactions", "hotspots", "atms", "accounts", "complaints",
+  "withdrawals", "transactions", "hotspots", "guard_posts", "atms", "accounts", "complaints",
   "model_metrics", "settings",
 ] as const;
 
@@ -67,8 +67,14 @@ async function main(): Promise<void> {
   console.log(`manifest verified, seed=${seed}`);
 
   const complaintRows = readCsv("complaints.csv");
+  for (const id of DEMO_COMPLAINT_IDS) {
+    if (!complaintRows.some((row) => row.complaintId === id)) {
+      throw new Error(`Demo complaint ${id} is missing; regenerate the corpus before seeding`);
+    }
+  }
   const accountRows = readCsv("accounts.csv");
   const atmRows = readCsv("atms.csv");
+  const guardPostRows = readCsv("guard_posts.csv");
   const transactionRows = readCsv("transactions.csv");
   const withdrawalRows = readCsv("withdrawals.csv");
 
@@ -136,6 +142,7 @@ async function main(): Promise<void> {
             longitude: Number(row.longitude),
             h3R8: row.h3R8!,
             h3R9: row.h3R9!,
+            locality: row.locality ?? null,
             city: row.city!,
             district: row.district!,
             state: row.state!,
@@ -143,6 +150,15 @@ async function main(): Promise<void> {
         )
         .returning({ id: schema.atms.id });
       rows.forEach((row, idx) => atmIdMap.set(row.atmId!, inserted[idx]!.id));
+    }
+    for (let i = 0; i < guardPostRows.length; i += BATCH) {
+      const batch = guardPostRows.slice(i, i + BATCH).map((row) => ({
+        postId: row.postId!,
+        atmId: atmIdMap.get(row.atmId!)!,
+        shiftStartHourIst: Number(row.shiftStartHourIst),
+        shiftEndHourIst: Number(row.shiftEndHourIst),
+      }));
+      await tx.insert(schema.guardPosts).values(batch);
     }
     for (let i = 0; i < transactionRows.length; i += BATCH) {
       const batch = transactionRows.slice(i, i + BATCH).map((row) => ({
@@ -184,7 +200,8 @@ async function main(): Promise<void> {
 
     console.log(
       `seeded: complaints=${complaintRows.length} accounts=${accountRows.length} atms=${atmRows.length} ` +
-        `transactions=${transactionRows.length} withdrawals=${withdrawalRows.length}`,
+        `transactions=${transactionRows.length} withdrawals=${withdrawalRows.length} ` +
+        `guardPosts=${guardPostRows.length}`,
     );
   });
 }

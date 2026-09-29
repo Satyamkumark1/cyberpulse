@@ -3,7 +3,8 @@ import { traverseFromComplaint, type TraversalEdgeRow } from "@cyberpulse/db/que
 import { and, asc, desc, eq, gte, inArray, lte, sql, type SQL } from "drizzle-orm";
 import { TRAVERSAL_MAX_DEPTH, TRAVERSAL_MAX_NODES_CAP, TRAVERSAL_ROW_LIMIT } from "@cyberpulse/shared/constants";
 import type { RiskIndicator, TxnChannel } from "@cyberpulse/shared/enums";
-import { NotFoundError, ValidationError } from "@/lib/errors";
+import { ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
+import { reconcileComplaint, type TrailView, type TrailAssociation, type TrailSummary } from "./lib/moneyTrail";
 import { requireAdminOrDemo, requireCapability, type RequestContext } from "./lib/auth";
 import { complaintScope, transactionScope } from "./lib/scope";
 
@@ -154,7 +155,7 @@ export interface GraphEdge {
   id: string;
   source: string;
   target: string;
-  data: { amountPaise: number; timestamp: string; channel: string };
+  data: { amountPaise: number; timestamp: string; channel: string; association: TrailAssociation };
 }
 
 export interface NetworkResponse {
@@ -163,6 +164,9 @@ export interface NetworkResponse {
   truncated: boolean;
   nodeCount: number;
   requestedDepth: number;
+  view: TrailView;
+  summary: TrailSummary;
+  recordsLimited: boolean;
 }
 
 function dedupeEdgesById(rows: TraversalEdgeRow[]): TraversalEdgeRow[] {
@@ -179,8 +183,11 @@ export async function getNetwork(
   depth: number,
   maxNodes: number,
   ctx: RequestContext,
+  view: TrailView = "complaint",
 ): Promise<NetworkResponse> {
   requireCapability(ctx.role, "transactions:network");
+  if (view !== "complaint" && view !== "related") throw new ValidationError("Unknown network view", "view");
+  if (view === "related" && ctx.role === "BANK") throw new ForbiddenError();
   if (!/^C-\d{5}$/.test(complaintBusinessId)) {
     throw new ValidationError("id must match ^C-\\d{5}$", "id");
   }
@@ -203,7 +210,12 @@ export async function getNetwork(
   // traversal. Deduplicated by the transaction's own id, keeping the
   // shortest-path occurrence, or every downstream consumer (node weights,
   // rendered edges) would double-count that one transaction.
-  const edgeRows = dedupeEdgesById(await traverseFromComplaint(complaint.id, depth, TRAVERSAL_ROW_LIMIT));
+  const caseRows = await db.select().from(transactions).where(eq(transactions.complaintId, complaint.id))
+    .orderBy(asc(transactions.timestamp), asc(transactions.hopIndex), asc(transactions.id)).limit(TRAVERSAL_ROW_LIMIT + 1);
+  const caseTransfers = caseRows.slice(0, TRAVERSAL_ROW_LIMIT);
+  const contextRows = view === "related" ? await traverseFromComplaint(complaint.id, depth, TRAVERSAL_ROW_LIMIT + 1) : [];
+  const caseEdges: TraversalEdgeRow[] = caseTransfers.map((t) => ({ ...t, depth: t.hopIndex + 1 }));
+  const edgeRows = dedupeEdgesById([...caseEdges, ...contextRows.slice(0, TRAVERSAL_ROW_LIMIT)]);
 
   // The CTE's base case matches every transaction tagged with this
   // complaint (there is one per hop, not just the first), and the
@@ -212,11 +224,7 @@ export async function getNetwork(
   // "account appearing in multiple chains"). So CTE `depth` is a per-branch
   // extension counter, not hop distance from the victim, and cannot be used
   // to find the victim. `hop_index = 0` on this complaint's own rows can.
-  const [entryHop] = await db
-    .select({ fromAccountId: transactions.fromAccountId })
-    .from(transactions)
-    .where(and(eq(transactions.complaintId, complaint.id), eq(transactions.hopIndex, 0)))
-    .limit(1);
+  const entryHop = caseTransfers.find((t) => t.hopIndex === 0);
   const victimAccountId = entryHop?.fromAccountId;
 
   // Rendered as a single complaint-level node, not as an account row, so its
@@ -229,25 +237,24 @@ export async function getNetwork(
     accountIds.add(e.fromAccountId);
     accountIds.add(e.toAccountId);
   }
+  // Select withdrawals by case, including accounts that also transfer onward.
+  const selectWithdrawals = () => db.select({ id: withdrawals.id, complaintId: withdrawals.complaintId,
+    accountId: withdrawals.accountId, amountPaise: withdrawals.amountPaise, timestamp: withdrawals.timestamp, atm: atms })
+    .from(withdrawals).innerJoin(atms, eq(atms.id, withdrawals.atmId));
+  const caseWithdrawalRows = await selectWithdrawals().where(eq(withdrawals.complaintId, complaint.id))
+    .orderBy(asc(withdrawals.timestamp), asc(withdrawals.id)).limit(TRAVERSAL_ROW_LIMIT + 1);
+  const caseWithdrawals = caseWithdrawalRows.slice(0, TRAVERSAL_ROW_LIMIT);
+  const relatedWithdrawals = view === "related" && accountIds.size
+    ? await selectWithdrawals().where(inArray(withdrawals.accountId, [...accountIds]))
+      .orderBy(asc(withdrawals.timestamp), asc(withdrawals.id)).limit(TRAVERSAL_ROW_LIMIT + 1) : [];
+  const withdrawalRows = [...new Map([...caseWithdrawals, ...relatedWithdrawals.slice(0, TRAVERSAL_ROW_LIMIT)].map((w) => [w.id, w])).values()];
+  const caseLimited = caseRows.length > TRAVERSAL_ROW_LIMIT || caseWithdrawalRows.length > TRAVERSAL_ROW_LIMIT;
+  const recordsLimited = caseLimited || contextRows.length > TRAVERSAL_ROW_LIMIT || relatedWithdrawals.length > TRAVERSAL_ROW_LIMIT;
+  const summary = reconcileComplaint(complaint.amountPaise, caseTransfers, caseWithdrawals, caseLimited);
+  for (const w of withdrawalRows) accountIds.add(w.accountId);
   if (victimAccountId !== undefined) accountIds.delete(victimAccountId);
-
   const accountRows = accountIds.size ? await db.select().from(accounts).where(inArray(accounts.id, [...accountIds])) : [];
   const accountById = new Map(accountRows.map((a) => [a.id, a]));
-
-  // Leaf accounts — never the source of a further hop in this subgraph —
-  // are the candidates for a withdrawal at an ATM.
-  const sourceAccountIds = new Set(edgeRows.map((e) => e.fromAccountId));
-  const leafAccountIds = [...accountIds].filter((id) => !sourceAccountIds.has(id));
-
-  const withdrawalRows = leafAccountIds.length
-    ? await db
-        .select({ accountId: withdrawals.accountId, amountPaise: withdrawals.amountPaise, timestamp: withdrawals.timestamp, atm: atms })
-        .from(withdrawals)
-        .innerJoin(atms, eq(atms.id, withdrawals.atmId))
-        .where(inArray(withdrawals.accountId, leafAccountIds))
-        .orderBy(desc(withdrawals.timestamp))
-        .limit(TRAVERSAL_ROW_LIMIT)
-    : [];
 
   const degreeOf = (accountDbId: number) =>
     edgeRows.filter((e) => e.fromAccountId === accountDbId || e.toAccountId === accountDbId).length;
@@ -284,20 +291,23 @@ export async function getNetwork(
   // (summed amount, latest timestamp) with the individual events kept on
   // the ATM node itself — keeps edge count bounded without losing detail.
   const atmMetaById = new Map<string, typeof atms.$inferSelect>();
-  const atmWithdrawalsById = new Map<string, { amountPaise: number; timestamp: string }[]>();
-  const atmEdgeAgg = new Map<string, { accountDbId: number; atmNodeId: string; totalPaise: number; latestTimestamp: string }>();
+  const atmWithdrawalsById = new Map<string, { amountPaise: number; timestamp: string; association: TrailAssociation }[]>();
+  const atmEdgeAgg = new Map<string, { accountDbId: number; atmNodeId: string; totalPaise: number; latestTimestamp: string; association: TrailAssociation }>();
 
   for (const row of withdrawalRows) {
+    const association: TrailAssociation = row.complaintId === complaint.id ? "COMPLAINT" : "RELATED";
     const atmNodeId = `atm:${row.atm.atmId}`;
     atmMetaById.set(atmNodeId, row.atm);
     const list = atmWithdrawalsById.get(atmNodeId) ?? [];
-    list.push({ amountPaise: row.amountPaise, timestamp: row.timestamp });
+    list.push({ amountPaise: row.amountPaise, timestamp: row.timestamp, association });
     atmWithdrawalsById.set(atmNodeId, list);
 
-    const key = `${row.accountId}->${atmNodeId}`;
+    // Never blend this case's withdrawals with other activity at the same ATM.
+    const key = `${row.accountId}->${atmNodeId}:${association}`;
     const existing = atmEdgeAgg.get(key);
     atmEdgeAgg.set(key, {
       accountDbId: row.accountId,
+      association,
       atmNodeId,
       totalPaise: (existing?.totalPaise ?? 0) + row.amountPaise,
       latestTimestamp: existing && existing.latestTimestamp > row.timestamp ? existing.latestTimestamp : row.timestamp,
@@ -315,17 +325,17 @@ export async function getNetwork(
   const edges: GraphEdge[] = edgeRows.map((e) => {
     const sourceId = e.fromAccountId === victimAccountId ? victimId : `acct:${accountById.get(e.fromAccountId)?.accountId ?? e.fromAccountId}`;
     const targetId = e.toAccountId === victimAccountId ? victimId : `acct:${accountById.get(e.toAccountId)?.accountId ?? e.toAccountId}`;
-    return { id: `txn-${e.id}`, source: sourceId, target: targetId, data: { amountPaise: e.amountPaise, timestamp: e.timestamp, channel: e.channel } };
+    return { id: `txn-${e.id}`, source: sourceId, target: targetId, data: { amountPaise: e.amountPaise, timestamp: e.timestamp, channel: e.channel, association: e.complaintId === complaint.id ? "COMPLAINT" : "RELATED" } };
   });
 
   for (const agg of atmEdgeAgg.values()) {
     const sourceAccount = accountById.get(agg.accountDbId);
-    if (!sourceAccount) continue;
+    if (!sourceAccount && agg.accountDbId !== victimAccountId) continue;
     edges.push({
-      id: `wd-${sourceAccount.accountId}-${agg.atmNodeId}`,
-      source: `acct:${sourceAccount.accountId}`,
+      id: `wd-${agg.accountDbId}-${agg.atmNodeId}-${agg.association}`,
+      source: agg.accountDbId === victimAccountId ? victimId : `acct:${sourceAccount!.accountId}`,
       target: agg.atmNodeId,
-      data: { amountPaise: agg.totalPaise, timestamp: agg.latestTimestamp, channel: "ATM" },
+      data: { amountPaise: agg.totalPaise, timestamp: agg.latestTimestamp, channel: "ATM", association: agg.association },
     });
   }
 
@@ -333,7 +343,7 @@ export async function getNetwork(
   const nodeCount = allNodes.length;
 
   if (nodeCount <= maxNodes) {
-    return { nodes: allNodes, edges, truncated: false, nodeCount, requestedDepth: depth };
+    return { nodes: allNodes, edges, truncated: false, nodeCount, requestedDepth: depth, view, summary, recordsLimited };
   }
 
   // Above `maxNodes`, keep the top-weighted subgraph: the victim node plus
@@ -341,13 +351,14 @@ export async function getNetwork(
   // broken by node id so the truncated set is deterministic across requests
   // (architecture/database-design.md §7, AC-P4-05).
   const weightById = new Map<string, number>();
+  const caseNodeIds = new Set(edges.filter((e) => e.data.association === "COMPLAINT").flatMap((e) => [e.source, e.target]));
   for (const e of edges) {
     weightById.set(e.source, (weightById.get(e.source) ?? 0) + e.data.amountPaise);
     weightById.set(e.target, (weightById.get(e.target) ?? 0) + e.data.amountPaise);
   }
   const ranked = allNodes
     .filter((n) => n.id !== victimId)
-    .sort((a, b) => (weightById.get(b.id) ?? 0) - (weightById.get(a.id) ?? 0) || a.id.localeCompare(b.id))
+    .sort((a, b) => Number(caseNodeIds.has(b.id)) - Number(caseNodeIds.has(a.id)) || (weightById.get(b.id) ?? 0) - (weightById.get(a.id) ?? 0) || a.id.localeCompare(b.id))
     .slice(0, maxNodes - 1);
   const keptIds = new Set([victimId, ...ranked.map((n) => n.id)]);
 
@@ -357,6 +368,7 @@ export async function getNetwork(
     truncated: true,
     nodeCount,
     requestedDepth: depth,
+    view, summary, recordsLimited,
   };
 }
 

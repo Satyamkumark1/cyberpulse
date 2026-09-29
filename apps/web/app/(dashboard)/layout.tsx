@@ -1,54 +1,63 @@
 import Link from "next/link";
+import { Sidebar } from "@/components/layout/Sidebar";
 import { Disclaimer } from "@/components/common/Disclaimer";
 import { PrototypeBadge } from "@/components/common/PrototypeBadge";
+import { RoleSwitcher } from "@/components/common/RoleSwitcher";
+import { StatePanel } from "@/components/common/StatePanel";
+import { resolveRoleFromNextHeaders } from "@/services/lib/auth";
 
-// engineering/folder-structure.md §2 route list. Server Component — static
-// navigation shell, no client state (RULE-frontend.md §Server vs client).
-const NAV_ITEMS = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/complaints", label: "Complaints" },
-  { href: "/risk-map", label: "Risk Map" },
-  { href: "/transactions", label: "Transactions" },
-  { href: "/investigations", label: "Investigations" },
-  { href: "/alerts", label: "Alerts" },
-  { href: "/reports", label: "Reports" },
-  { href: "/settings", label: "Settings" },
-] as const;
-
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const role = await resolveRoleFromNextHeaders();
+  // ADR-022: CITIZEN holds no officer capability, so every page here would
+  // 403. Say so once, point to the citizen pages, and keep the role switcher
+  // so a presenter can switch back. The 403s behind this remain the control.
+  if (role === "CITIZEN") return <CitizenGate />;
   return (
     <div className="flex min-h-screen flex-col">
-      <div className="flex flex-1">
-        <nav
-          aria-label="Primary"
-          className="w-56 shrink-0 bg-navy-900 px-3 py-4 text-white"
-        >
-          <div className="mb-6 px-2 text-lg font-semibold">CyberPulse AI</div>
-          <ul className="space-y-1">
-            {NAV_ITEMS.map((item) => (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className="block rounded-sm px-2 py-2 text-sm text-white/90 hover:bg-navy-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sih-blue-600"
-                >
-                  {item.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-
-        <div className="flex flex-1 flex-col">
-          <header className="flex items-center justify-between border-b border-slate-200 bg-navy-800 px-4 py-3 text-white">
-            <span className="text-sm font-medium">Decision-support intelligence — prototype</span>
-            <PrototypeBadge />
+      <a href="#main-content" className="sr-only z-50 rounded-md bg-white p-3 text-sih-blue-600 focus:not-sr-only focus:fixed focus:left-4 focus:top-4">Skip to content</a>
+      <div className="flex flex-1 flex-col lg:flex-row">
+        <Sidebar role={role} />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-4 text-slate-800 lg:px-8">
+            <span className="text-sm font-medium text-slate-600">Decision-support workspace</span>
+            <div className="flex flex-wrap items-center gap-4">
+              <RoleSwitcher role={role} />
+              <PrototypeBadge />
+            </div>
           </header>
 
-          <main className="flex-1 p-6">{children}</main>
+          <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 p-4 outline-none sm:p-6 lg:p-8">{children}</main>
 
           <Disclaimer />
         </div>
       </div>
+    </div>
+  );
+}
+
+function CitizenGate() {
+  return (
+    <div className="flex min-h-screen flex-col">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-4 lg:px-8">
+        <span className="text-sm font-medium text-slate-600">Decision-support workspace</span>
+        <div className="flex flex-wrap items-center gap-4">
+          <RoleSwitcher role="CITIZEN" />
+          <PrototypeBadge />
+        </div>
+      </header>
+      <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-xl flex-1 p-6 outline-none">
+        <StatePanel
+          state="empty"
+          title="This workspace is for officers"
+          message="The CITIZEN role has no access here. Switch to an officer role, or open the citizen pages."
+        />
+        <p className="mt-4 text-center">
+          <Link href="/safety" className="text-sm font-medium text-sih-blue-600 underline">
+            Open Scam Shield
+          </Link>
+        </p>
+      </main>
+      <Disclaimer />
     </div>
   );
 }

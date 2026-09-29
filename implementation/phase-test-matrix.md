@@ -250,6 +250,28 @@
 
 ---
 
+## Phase 9 — Scam Shield (FEAT-17)
+
+| Phase | Requirement | Feature | Test Case | Type | Priority | Status |
+|:--:|---|---|---|---|---|---|
+| P9 | FR-26, FR-26.1 | FEAT-17 | TC-SAFE-001, 002, 030 | Unit/E2E | Critical | Passing |
+| P9 | FR-27 | FEAT-17 | TC-SAFE-003, 004, 005, 031 | Unit/E2E | High | Passing |
+| P9 | FR-28 | FEAT-17 | TC-SAFE-012, 013, 032, 037 | Int/E2E | Critical | Passing |
+| P9 | FR-28.1 | FEAT-17 | TC-SAFE-010, 033 | Int/E2E | Critical | Passing |
+| P9 | FR-28.2 | FEAT-17 | TC-SAFE-011 | Integration | Critical | Passing |
+| P9 | FR-28.3 | FEAT-17 | TC-SAFE-010, 014 | Integration | Critical | Passing |
+| P9 | FR-28.4 | FEAT-17 | TC-SAFE-015 | Integration | High | Passing |
+| P9 | FR-29 | FEAT-17 | TC-SAFE-006, 016, 018, 032, 034 | Unit/Int/E2E | Critical | Passing |
+| P9 | FR-29.1 | FEAT-17 | TC-SAFE-017 | Integration | Critical | Passing |
+| P9 | FR-29.2 | FEAT-17 | TC-SAFE-010 | Integration | Critical | Passing |
+| P9 | FR-30 | FEAT-17 | TC-SAFE-007, 035, 038, 040 | Unit/E2E/Static | Critical | Passing |
+| P9 | FR-30.1 | FEAT-17 | TC-SAFE-020 | Integration | Critical | Passing |
+| P9 | FR-20.4 | FEAT-17 | TC-SAFE-019, 039 | Unit/E2E | Critical | Passing |
+| P9 | Personal data | FEAT-17 | TC-SAFE-021 | Integration | Critical | Passing |
+| P9 | NFR-08 | FEAT-17 | TC-SAFE-036 | Manual | High | Planned |
+
+---
+
 ## Coverage Summary by Phase
 
 | Phase | New cases | Cumulative | Critical | Regression required |

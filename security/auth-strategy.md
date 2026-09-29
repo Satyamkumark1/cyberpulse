@@ -35,6 +35,8 @@ POST /api/role  { "role": "BANK" }
 
 Sets a non-httpOnly, same-site cookie carrying the selected role. Subsequent requests resolve the role from that cookie, or from an `x-cyberpulse-role` header when present (which is how the test suite exercises role boundaries).
 
+The `/safety` pages (FEAT-17) always send `x-cyberpulse-role: CITIZEN`, so the citizen side never depends on the cookie. CITIZEN is asserted exactly like every other role (ADR-022); what protects a citizen's report status is the one-time tracking code, not the role.
+
 ### 2.2 Role resolution
 
 ```ts
@@ -47,7 +49,7 @@ export function resolveRole(req: Request): ActorRole {
 }
 ```
 
-An unrecognised value falls back to LEA rather than erroring or granting ADMIN. Failing towards the least-privileged valid role is the correct default even in a prototype.
+An unrecognised value falls back to LEA rather than erroring or granting ADMIN. LEA is not the most restrictive role — GUARD is (ADR-021) — but it is the safe default this prototype's cookie-less experience is built around: existing demo/map E2E specs never set a role cookie and expect full LEA-level capability. The correctness property this guards is narrower and still holds regardless of what else exists: never escalate to ADMIN on unrecognised input.
 
 ### 2.3 UI labelling
 

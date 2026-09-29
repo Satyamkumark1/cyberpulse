@@ -4,7 +4,7 @@
 |---|---|
 | Version | 1.0 |
 | Model | Role-based capability checks plus object-level scope checks, both evaluated server-side |
-| Roles | LEA · BANK · ADMIN |
+| Roles | LEA · BANK · ADMIN · GUARD · I4C · CITIZEN (GUARD/I4C added by ADR-021, CITIZEN by ADR-022 — same asserted-not-verified mechanism, no new identity stored) |
 | Related | `security/auth-strategy.md` (how a role is asserted — and why that is not authentication) |
 
 ---
@@ -26,32 +26,46 @@ Both run in the service layer. Neither runs in a component, and neither is imple
 
 ## 2. Capability Matrix
 
-| Capability | LEA | BANK | ADMIN | Enforced at |
-|---|:--:|:--:|:--:|---|
-| `complaints:list` | ✅ | ⚠ | ✅ | `complaintService.list` |
-| `complaints:read` | ✅ | ⚠ | ✅ | `complaintService.getWithContext` |
-| `complaints:updateStatus` | ✅ | ❌ | ✅ | `complaintService.updateStatus` |
-| `transactions:list` | ✅ | ⚠ | ✅ | `transactionService.list` |
-| `transactions:network` | ✅ | ⚠ | ✅ | `transactionService.getNetwork` |
-| `prediction:run` | ✅ | ❌ | ✅ | `predictionService.predict` |
-| `hotspots:read` | ✅ | ✅ | ✅ | `hotspotService.list` |
-| `alerts:create` | ✅ | ❌ | ✅ | `alertService.create` |
-| `alerts:read` | ✅ | ⚠ | ✅ | `alertService.list` |
-| `alerts:acknowledge` | ✅ | ✅ | ✅ | `alertService.acknowledge` |
-| `alerts:close` | ✅ | ❌ | ✅ | `alertService.close` |
-| `investigations:create` | ✅ | ❌ | ✅ | `investigationService.create` |
-| `investigations:read` | ✅ | ⚠ | ✅ | `investigationService.get` |
-| `investigations:transition` | ✅ | ❌ | ✅ | `investigationService.transition` |
-| `investigations:addNote` | ✅ | ⚠ | ✅ | `investigationService.addNote` |
-| `reports:read` | ✅ | ⚠ | ✅ | `reportService.summary` |
-| `metrics:read` | ✅ | ✅ | ✅ | `reportService.metrics` |
-| `settings:read` | ✅ | ✅ | ✅ | `settingsService.get` |
-| `settings:write` | ❌ | ❌ | ✅ | `settingsService.update` |
-| `simulation:control` | ❌ | ❌ | ✅ | `transactionService.simulation` |
-| `demo:reset` | ❌ | ❌ | ✅ | demo route handler |
-| `health:read` | ✅ | ✅ | ✅ | health handler |
+| Capability | LEA | BANK | ADMIN | GUARD | I4C | CITIZEN | Enforced at |
+|---|:--:|:--:|:--:|:--:|:--:|:--:|---|
+| `complaints:list` | ✅ | ⚠ | ✅ | ❌ | ✅ | ❌ | `complaintService.list` |
+| `complaints:read` | ✅ | ⚠ | ✅ | ❌ | ✅ | ❌ | `complaintService.getWithContext` |
+| `complaints:updateStatus` | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | `complaintService.updateStatus` |
+| `transactions:list` | ✅ | ⚠ | ✅ | ❌ | ✅ | ❌ | `transactionService.list` |
+| `transactions:network` | ✅ | ⚠ | ✅ | ❌ | ✅ | ❌ | `transactionService.getNetwork` |
+| `prediction:run` | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | `predictionService.predict` |
+| `hotspots:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | `hotspotService.list` |
+| `alerts:create` | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | `alertService.create` |
+| `alerts:read` | ✅ | ⚠ | ✅ | ❌ | ✅ | ❌ | `alertService.list` |
+| `alerts:acknowledge` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | `alertService.acknowledge` |
+| `alerts:close` | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | `alertService.close` |
+| `investigations:create` | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | `investigationService.create` |
+| `investigations:read` | ✅ | ⚠ | ✅ | ❌ | ✅ | ❌ | `investigationService.get` |
+| `investigations:transition` | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | `investigationService.transition` |
+| `investigations:addNote` | ✅ | ⚠ | ✅ | ❌ | ❌ | ❌ | `investigationService.addNote` |
+| `reports:read` | ✅ | ⚠ | ✅ | ❌ | ✅ | ❌ | `reportService.summary` |
+| `metrics:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | `reportService.metrics` |
+| `settings:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | `settingsService.get` |
+| `settings:write` | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | `settingsService.update` |
+| `simulation:control` | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | `transactionService.simulation` |
+| `demo:reset` | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | demo route handler |
+| `health:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | health handler |
+| `citizenReports:create` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | `citizenReportService.submit`, `.cities` |
+| `citizenReports:status` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | `citizenReportService.status` |
 
 ✅ full · ⚠ scoped (see §3) · ❌ denied with 403
+
+GUARD (ADR-021) is read-only and identity-free: only `hotspots:read`, `metrics:read`,
+`settings:read`, `health:read`. It deliberately lacks `complaints:read`, which is why it does
+not reach `/risk-map` — the hotspot drawer behind that route returns complaint-linked data
+(`fraudType`, `amountPaise`) gated only by `hotspots:read`. I4C (PER-02, national-scope
+analyst) is a strict subset of LEA's profile with every write/case-management capability
+denied; it is unscoped, in the same bucket as LEA/ADMIN in §3, not BANK's.
+
+CITIZEN (ADR-022, FEAT-17) is denied all 22 officer capabilities and is the only role holding the
+two citizen-report capabilities. Its object scope is not a query predicate on a role but a secret:
+status lookup requires the one-time tracking code, compared as a hash, and a mismatch is the same
+404 as an unknown ID. The matrix is 24 × 6 = 144 cases (`services/lib/auth.test.ts`).
 
 ---
 
@@ -61,10 +75,12 @@ Scope applies only to BANK. LEA and ADMIN see the full single-tenant corpus in v
 
 ### BANK scope definition
 
-A BANK caller may act on an object if and only if it is reachable from an alert whose `recipients` array contains `BANK`.
+A BANK caller may act on an object if and only if it is reachable from an alert addressed to a destination the bank acts on — `BANK` or `ATM_SITE`.
+
+`ATM_SITE` is in that set because the bank operates the ATM site and performs the cascade to its duty post (`decision-log.md` DEC-010). A bank cannot perform that cascade for an alert it cannot see. The set is defined once, as `BANK_VISIBLE_RECIPIENTS` in `services/lib/scope.ts`, and every BANK scope site consumes it; LEA and ADMIN retain their documented access.
 
 ```
-visible_alerts        := alerts where 'BANK' = ANY(recipients)
+visible_alerts        := alerts where recipients && ARRAY['BANK','ATM_SITE']
 visible_predictions   := predictions referenced by visible_alerts
 visible_complaints    := complaints referenced by visible_predictions
 visible_investigations:= investigations referenced by visible_alerts
@@ -82,7 +98,7 @@ export function complaintScope(role: ActorRole) {
       db.select({ id: predictions.complaintId })
         .from(alerts)
         .innerJoin(predictions, eq(alerts.predictionId, predictions.id))
-        .where(sql`'BANK' = ANY(${alerts.recipients})`));
+        .where(bankRecipientPredicate()));   // BANK_VISIBLE_RECIPIENTS
   }
   return undefined;   // LEA and ADMIN: unscoped in v1.0
 }
@@ -136,7 +152,9 @@ Some operations carry additional requirements beyond the capability check.
 | `alerts:acknowledge` | Idempotent — a repeat leaves `acknowledged_at` unchanged |
 | `investigations:transition` | Validated against the state machine; optimistic concurrency via `expectedUpdatedAt`; backward moves require a note |
 | `settings:write` | ADMIN only; `thresholdHigh > thresholdMedium` enforced by a database `CHECK` as well as validation |
-| `demo:reset` | Scoped to `origin = 'DEMO'`; cannot touch seed data; requires confirmation in the UI |
+| `demo:reset` | Scoped to `origin = 'DEMO'`, including rows that depend on a DEMO complaint; cannot touch seed data; requires confirmation in the UI |
+| `citizenReports:create` | Strict body, no free text; server-derived fields rejected with 400; 5/min per IP; complaint, report and audit event in one transaction |
+| `citizenReports:status` | Tracking code only in a POST body, hashed at rest, compared in constant time; wrong code ≡ unknown ID (404) |
 | All of the above | Audit event written inside the same transaction |
 
 ---
@@ -171,7 +189,7 @@ These are the same gaps listed in `security/auth-strategy.md` §3 and `architect
 
 | Check | Test |
 |---|---|
-| Every capability in §2 behaves as tabulated for all three roles | TC-SEC-011 (parameterised across the matrix) |
+| Every capability in §2 behaves as tabulated for all five roles | TC-SEC-011 (parameterised across the matrix) |
 | BANK cannot read an out-of-scope complaint, and `total` is scoped | TC-SEC-012 |
 | 403 bodies contain no object detail | TC-SEC-004 |
 | Scoped and absent objects are indistinguishable | TC-SEC-012 |
