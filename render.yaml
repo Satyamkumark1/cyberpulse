@@ -1,0 +1,22 @@
+# ML service on Render (devops/infrastructure.md). Deploy this before the web
+# app and wait for /health to report modelLoaded: true (RULE-deployment.md).
+services:
+  - type: web
+    name: cyberpulse-ml
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./docker/Dockerfile.ml
+    dockerContext: .
+    # One worker: the free tier has 512 MB and the budget is 512 MB per process.
+    dockerCommand: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
+    healthCheckPath: /health
+    buildFilter:
+      paths:
+        - apps/ml-service/**
+        - docker/Dockerfile.ml
+    envVars:
+      - key: PORT
+        value: "8000"
+      - key: LOG_LEVEL
+        value: info

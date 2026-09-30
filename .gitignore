@@ -19,8 +19,9 @@ __pycache__/
 # FR-01.8: the generator writes to a version-controlled data directory —
 # data/generated/ is committed, not ignored.
 
-apps/ml-service/models/*.joblib
-!apps/ml-service/models/.gitkeep
+# Model artefacts are committed (~2 MB): the ML image bakes them in and Render
+# builds that image from the repo, so an ignored artefact means modelLoaded: false.
 
 *.log
 .DS_Store
+.brag-output

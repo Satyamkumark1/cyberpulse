@@ -10,6 +10,11 @@ Change-management rules — what must accompany each kind of change — are defi
 
 ## [Unreleased]
 
+### Added — Deployment
+
+- `render.yaml` for the ML service (Docker, Singapore, one worker, `/health` check), as `devops/infrastructure.md` already described. Built and run locally under a 512 MB cap: `modelLoaded: true`, 184 MB resident.
+- Model artefacts (`*.joblib`, ~2 MB) are now committed instead of ignored, so an image built from the repo carries the model.
+
 ### Added — Phase 9 (Scam Shield, FEAT-17) — DEC-013, ADR-022
 
 - Public `/safety` section in English and Hindi (`?lang=hi`): **Scam Check** (six scenarios × four statements, matched reasons with cited public advisories, never a score), **Verify Before You Pay** (`.bank.in` links, `1600xx` callers, `@valid` UPI handles — pure functions, nothing leaves the browser), **Report Now** (1930 first, then fraud type, amount and city only) and **status tracking** by complaint ID + one-time tracking code.
