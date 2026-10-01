@@ -31,6 +31,14 @@ The committed artefacts were trained before `generate_training_data.py` stopped 
 
 Baselines on top-3 hit rate: historical frequency 0.8785 and logistic regression 0.8692 both exceed XGBoost's 0.8411. Shuffled-label ablation 0.1215 against random 0.0633.
 
+### Removed — dead code, unused files, the web Docker image
+
+- Web: `UnauthorizedError`, `logger.withRequest`, `reportService.filterOptions` (no callers). The rate limiter's hand-built 429 now goes through `toErrorResponse(new RateLimitedError())`, the single serialiser.
+- ML: `InferenceFailed`, `ModelNotLoaded` (never raised; `engineering/error-handling.md` updated), `tests/manual_predict_smoke.py` (never collected, and it reintroduced the future-withdrawal leak), the unused generated schemas `health.py`, `prediction.py`, `predict_request.py` (`generate-pydantic.sh` now emits only the ML-service contracts), a duplicate import, `verify_manifest`. `clip_score` is now applied to the raw model probability, as coding-standards §3.3 required. Ruff is clean across `apps/ml-service`, `training/` included.
+- Untracked `graphify-out/` (local absolute paths) and the regenerable `training/data/dataset.csv` (4.4 MB).
+- `docker/Dockerfile.web`, the compose `web` service, its CI build and `output: "standalone"` — DEC-015; CR-06 reworded.
+- Kept on purpose: `riskLevel.ts` and `isEligibleForExposure` (TC-UNIT-020/022/023), `kde_surface` (ADR-012, TC-ML-022 — implemented but not yet called by `/predict`).
+
 ### Fixed — values shown that the model did not produce
 
 - Alert and investigation detail pages multiplied an already-percentage factor contribution by 100 ("7780.0%") and passed the confidence level through a number formatter ("NaN%"). Both now render through `FactorBar` and the level text. Covered by `tests/demo/prediction-detail.spec.ts`, which compares the page to the API response.

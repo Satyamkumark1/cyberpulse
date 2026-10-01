@@ -1,6 +1,5 @@
 import pino from "pino";
 import { env } from "./env";
-import type { ActorRole } from "@cyberpulse/shared/enums";
 
 // engineering/logging-monitoring.md §5. Redaction is configured at the
 // logger, not left to call sites, so a body cannot be logged even by a
@@ -13,7 +12,3 @@ export const logger = pino({
   formatters: { level: (label) => ({ level: label }) },
   timestamp: pino.stdTimeFunctions.isoTime,
 });
-
-export function withRequest(requestId: string, route: string, role?: ActorRole) {
-  return logger.child({ requestId, route, role });
-}

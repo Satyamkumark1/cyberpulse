@@ -53,11 +53,6 @@ export class ValidationError extends AppError {
     super("VALIDATION_ERROR", message, field);
   }
 }
-export class UnauthorizedError extends AppError {
-  constructor() {
-    super("UNAUTHORIZED");
-  }
-}
 export class ForbiddenError extends AppError {
   constructor() {
     super("FORBIDDEN");

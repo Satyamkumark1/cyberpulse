@@ -160,6 +160,13 @@ Reversible:  Yes / No / At what cost
 **Nothing is cut.** Phase 9 follows the terminal P8; no planned deliverable is displaced.
 **Reversible.** The pages, service and capability changes are ordinary reverts. The migration adds an enum value, which cannot be dropped in place — see its rollback note.
 
+### DEC-015 · The web app is no longer built as a Docker image
+**Date** 2026-10-01 · **Decided by** Project owner · **Phase** post-P8 cleanup
+**Context.** Production runs the web app on Vercel, which builds from source; the ML service runs on Render from `docker/Dockerfile.ml`. `docker/Dockerfile.web`, the compose `web` service and `output: "standalone"` existed only for local parity, while local development already ran the web app with `pnpm` (`make dev`).
+**Decision.** Remove the web image. The local fallback is `make dev`: Postgres and the ML service in Docker Compose, the web app from source. CR-06 / CON-04 reworded to match; they still require a local stack with no managed-service dependency.
+**Consequences.** One fewer image to keep in step with Next.js; CI no longer builds it. The fallback laptop needs Node 20 and pnpm installed, as it already did for `make dev`.
+**Reversible.** Restore the file, the compose service and `output: "standalone"` from git history.
+
 ---
 
 ## Scope Change Protocol

@@ -311,7 +311,7 @@ Added by DEC-013. The only part of the product addressed to members of the publi
 | CR-03 | Terminology shall be limited to "Mule Account", "Suspicious Account" and "Risk Indicator" for account risk language | CON-07 |
 | CR-04 | The system shall not render an accusation about any individual | CON-07, NG-03 |
 | CR-05 | Primary layout shall target 1920×1080 and remain usable to 1280×720 | CON-08 |
-| CR-06 | The stack shall run locally via Docker Compose without a managed-service dependency | CON-04 |
+| CR-06 | The stack shall run locally without a managed-service dependency: Postgres and ML via Docker Compose, the web app from source (`make dev`, DEC-015) | CON-04 |
 
 ---
 

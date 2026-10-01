@@ -19,9 +19,9 @@ from xgboost import XGBClassifier
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.engine.features import FEATURE_ORDER, build_feature_schema  # noqa: E402
-from app.engine.model import CalibratedRiskModel, TemporalModel  # noqa: E402
-from training.generate_training_data import build_dataset, database_url  # noqa: E402
+from app.engine.features import FEATURE_ORDER, build_feature_schema
+from app.engine.model import CalibratedRiskModel, TemporalModel
+from training.generate_training_data import build_dataset, database_url
 
 RANDOM_STATE: Final = 26184
 NUM_TEMPORAL_BINS: Final = 12
@@ -30,38 +30,37 @@ TEMPORAL_BIN_HOURS: Final = 2
 # Winner of the documented grid search (ai/model-selection.md §5), run by
 # training/search_hyperparams.py, scored by top-3 hit rate on the
 # calibration split (never the holdout).
-RISK_MODEL_PARAMS: Final = dict(
-    n_estimators=200,
-    max_depth=6,
-    learning_rate=0.05,
-    subsample=0.8,
-    colsample_bytree=0.8,
-    min_child_weight=10,
-    gamma=0,
-    reg_alpha=0.1,
-    reg_lambda=1.0,
-    objective="binary:logistic",
-    eval_metric="aucpr",
-    tree_method="hist",
-    random_state=RANDOM_STATE,
-)
+RISK_MODEL_PARAMS: Final = {
+    "n_estimators": 200,
+    "max_depth": 6,
+    "learning_rate": 0.05,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "min_child_weight": 10,
+    "gamma": 0,
+    "reg_alpha": 0.1,
+    "reg_lambda": 1.0,
+    "objective": "binary:logistic",
+    "eval_metric": "aucpr",
+    "tree_method": "hist",
+    "random_state": RANDOM_STATE,
+}
 
-TEMPORAL_MODEL_PARAMS: Final = dict(
-    n_estimators=250,
-    max_depth=4,
-    learning_rate=0.06,
-    objective="multi:softprob",
-    eval_metric="mlogloss",
-    random_state=RANDOM_STATE,
-)
+TEMPORAL_MODEL_PARAMS: Final = {
+    "n_estimators": 250,
+    "max_depth": 4,
+    "learning_rate": 0.06,
+    "objective": "multi:softprob",
+    "eval_metric": "mlogloss",
+    "random_state": RANDOM_STATE,
+}
 # `num_class` is deliberately not passed above: XGBoost's sklearn wrapper
 # infers it from the labels actually seen in `y` and encodes them into
 # `model.classes_`, in order. Not every complaint's cash-out lands in every
 # one of the 12 bins, so `y` is rarely a dense 0..11 range — pinning
 # num_class=12 makes the wrapper reject a perfectly valid, sparser label set
-# outright. `predicted_class_index -> model.classes_[predicted_class_index]`
-# is therefore mandatory at every call site; argmax alone silently returns
-# the wrong bin number whenever a bin was never observed in training.
+# outright. TemporalModel.predict_bin_probabilities maps through
+# `model.classes_` so no caller can mistake a class index for a bin number.
 
 
 def train_risk_model(train_df: pd.DataFrame, cal_df: pd.DataFrame) -> CalibratedRiskModel:
@@ -124,7 +123,6 @@ def main() -> None:
     risk_model = train_risk_model(train_df, cal_df)
     temporal_model = train_temporal_model(pd.concat([train_df, cal_df]))
 
-    import joblib
 
     joblib.dump(risk_model, model_dir / "risk_model.joblib")
     joblib.dump(temporal_model, model_dir / "temporal_model.joblib")

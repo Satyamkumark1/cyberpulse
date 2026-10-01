@@ -12,12 +12,12 @@ from pathlib import Path
 warnings.filterwarnings("ignore")
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-import psycopg  # noqa: E402
-from xgboost import XGBClassifier  # noqa: E402
+import psycopg
+from xgboost import XGBClassifier
 
-from app.engine.features import FEATURE_ORDER  # noqa: E402
-from training.evaluate import rank_metrics  # noqa: E402
-from training.generate_training_data import build_dataset, database_url  # noqa: E402
+from app.engine.features import FEATURE_ORDER
+from training.evaluate import rank_metrics
+from training.generate_training_data import build_dataset, database_url
 
 GRID = {
     "max_depth": [3, 4, 5, 6],

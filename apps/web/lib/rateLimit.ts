@@ -1,5 +1,5 @@
 import { getRequestId } from "./requestId";
-import { SAFE_MESSAGES } from "./errors";
+import { RateLimitedError, toErrorResponse } from "./errors";
 
 // architecture/security-architecture.md §7. Every endpoint's limit is an
 // explicit decision made where the route is defined — see @cyberpulse/shared
@@ -55,11 +55,10 @@ export function withRateLimit<A extends unknown[] = []>(
       const result = checkRateLimit(key, config);
 
       if (!result.allowed) {
-        const requestId = getRequestId(req);
-        return Response.json(
-          { error: { code: "RATE_LIMITED", message: SAFE_MESSAGES.RATE_LIMITED, requestId } },
-          { status: 429, headers: { "Retry-After": String(result.retryAfterSeconds) } },
-        );
+        // Through the one serialiser (RULE-backend.md §Errors), plus Retry-After.
+        const res = toErrorResponse(new RateLimitedError(), getRequestId(req));
+        res.headers.set("Retry-After", String(result.retryAfterSeconds));
+        return res;
       }
 
       return handler(req, ...rest);

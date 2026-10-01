@@ -86,16 +86,6 @@ services:
       interval: 10s
       retries: 6
 
-  web:
-    build: { context: ., dockerfile: docker/Dockerfile.web }
-    ports: ["3000:3000"]
-    environment:
-      DATABASE_URL: postgres://cyberpulse:cyberpulse@postgres:5432/cyberpulse
-      ML_SERVICE_URL: http://ml-service:8000
-    depends_on:
-      postgres: { condition: service_healthy }
-      ml-service: { condition: service_healthy }
-
 volumes: { pgdata: }
 ```
 
@@ -140,7 +130,7 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--worker
 
 Baking the artefacts means the deployed model version is a property of the image tag. There is no scenario in which the running service and the recorded `model_version` disagree.
 
-**`docker/Dockerfile.web`** — Next.js standalone output, non-root, Node 20 slim. Used for local parity and for any non-Vercel host; Vercel builds from source.
+**No web image.** The web app runs from source locally (`make dev`) and Vercel builds it from source in production; the web Dockerfile was removed (DEC-015).
 
 ---
 
@@ -241,9 +231,9 @@ The deployment concern that most affects the project's actual outcome.
 | 6 | Confirm the model version in Settings reads `CyberPulse-Demo-v1` | T−20 min |
 | 7 | Keep a browser tab open on `/api/health` to hold the service warm | Throughout |
 | 8 | Reset between evaluators | Between runs |
-| 9 | Fallback: local Docker Compose stack running on the presenting laptop | Standing by |
+| 9 | Fallback: `make dev` on the presenting laptop — Postgres and ML in Docker Compose, web from source | Standing by |
 
-Step 9 is the one that matters when venue connectivity fails. The identical topology runs locally, which is why Docker Compose parity is a requirement (CON-04) rather than a developer convenience.
+Step 9 is the one that matters when venue connectivity fails. The same three components run locally with no managed service, which is why local parity is a requirement (CON-04) rather than a developer convenience.
 
 ---
 

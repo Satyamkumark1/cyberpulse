@@ -27,3 +27,7 @@ __pycache__/
 .brag-output
 test-results/
 playwright-report/
+
+# Local tool output (absolute paths) and regenerable training extracts.
+graphify-out/
+apps/ml-service/training/data/

@@ -1,4 +1,5 @@
-# architecture/deployment-architecture.md §3.
+# architecture/deployment-architecture.md §3. The web app runs from source
+# (`make dev`); Vercel builds it in production (DEC-015).
 services:
   postgres:
     image: postgres:16-alpine
@@ -24,19 +25,5 @@ services:
       test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 10s
       retries: 6
-
-  web:
-    build: { context: ., dockerfile: docker/Dockerfile.web }
-    ports: ["3000:3000"]
-    environment:
-      DATABASE_URL: postgres://cyberpulse:cyberpulse@postgres:5432/cyberpulse
-      ML_SERVICE_URL: http://ml-service:8000
-      NEXT_PUBLIC_MAP_TILE_URL: https://demotiles.maplibre.org/style.json
-      NEXT_PUBLIC_APP_NAME: CyberPulse AI
-      NEXT_PUBLIC_DEMO_MODE: "true"
-      NEXT_PUBLIC_ANALYTICS_ENABLED: "true"
-    depends_on:
-      postgres: { condition: service_healthy }
-      ml-service: { condition: service_healthy }
 
 volumes: { pgdata: }

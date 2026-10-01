@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { db, dbSchema } from "@cyberpulse/db";
 import { desc, sql } from "drizzle-orm";
 import { ForbiddenError, ValidationError } from "@/lib/errors";
-import { filterOptions, metrics, summary } from "./reportService";
+import { metrics, summary } from "./reportService";
 
 const { complaints, modelMetrics } = dbSchema;
 
@@ -113,17 +113,3 @@ describe("reportService.metrics — architecture/api-design.md API-061", () => {
   });
 });
 
-describe("reportService.filterOptions", () => {
-  it("returns distinct, scoped city/state pairs actually present in the corpus", async () => {
-    const [top] = await db
-      .select({ city: complaints.city, count: sql<number>`count(*)::int` })
-      .from(complaints)
-      .groupBy(complaints.city)
-      .orderBy(desc(sql`count(*)`))
-      .limit(1);
-    if (!top) throw new Error("fixture precondition failed: no seeded complaints");
-
-    const options = await filterOptions(lea);
-    expect(options.some((row) => row.city === top.city)).toBe(true);
-  });
-});

@@ -32,6 +32,7 @@ from app.engine.hotspot import (
 from app.engine.risk import (
     DEFAULT_THRESHOLD_HIGH,
     DEFAULT_THRESHOLD_MEDIUM,
+    clip_score,
     confidence,
     derive_risk_level,
 )
@@ -120,7 +121,8 @@ def predict(payload: MlPredictRequest, request: Request) -> Response:
             linked_account_count=vec_by_name["linked_account_count"], linked_depth=vec_by_name["linked_depth"],
             hour_of_day=int(vec_by_name["hour_of_day"]),
         )
-        ranked.append(RankedCell(cell=cell, model_probability=float(model_p), combined=combined_score(float(model_p), terms)))
+        p = clip_score(model_p)
+        ranked.append(RankedCell(cell=cell, model_probability=p, combined=combined_score(p, terms)))
     ranked = rank_candidates(ranked)
     _, clustering_fallback = dbscan_cluster(cells)
     stages.append(PipelineStage(name="hotspot", durationMs=round((time.monotonic() - t_hotspot) * 1000)))

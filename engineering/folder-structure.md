@@ -23,7 +23,7 @@ cyberpulse-ai/
 │   ├── generate-data/        Synthetic corpus generator
 │   ├── seed/                 Database seeding
 │   └── evaluation/           signal_check · pii_scan · no_hardcode_check
-├── docker/                   Dockerfile.web, Dockerfile.ml
+├── docker/                   Dockerfile.ml
 ├── docs/                     architecture · ml-pipeline · demo-script · data-methodology
 ├── .claude/                  CLAUDE.md, rules, commands, skills, agents
 ├── .github/workflows/        CI

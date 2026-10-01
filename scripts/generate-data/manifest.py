@@ -25,17 +25,3 @@ def write_manifest(out_dir: Path, seed: int, files: list[str], row_counts: dict[
     }
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
 
-
-def verify_manifest(out_dir: Path) -> tuple[bool, list[str]]:
-    """Returns (ok, mismatched_files)."""
-    manifest_path = out_dir / "manifest.json"
-    if not manifest_path.exists():
-        return False, ["manifest.json missing"]
-
-    manifest = json.loads(manifest_path.read_text())
-    mismatched = []
-    for name, expected_hash in manifest["files"].items():
-        path = out_dir / name
-        if not path.exists() or sha256_of(path) != expected_hash:
-            mismatched.append(name)
-    return len(mismatched) == 0, mismatched

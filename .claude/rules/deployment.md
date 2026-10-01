@@ -89,7 +89,7 @@ Additive-first, so a web rollback never strands the schema. Applied to a clean d
 
 ## Demonstration day
 
-Deployment is verified at T−60, warmed at T−30, reset at T−25, and a health tab stays open throughout. The local Docker stack runs on the presenting laptop as the fallback for venue network failure — which is why Compose parity is a requirement, not a convenience.
+Deployment is verified at T−60, warmed at T−30, reset at T−25, and a health tab stays open throughout. The local stack (`make dev`: Postgres and ML in Docker Compose, web from source) runs on the presenting laptop as the fallback for venue network failure — which is why local parity is a requirement, not a convenience.
 
 **If a number looks wrong: stop, reset, reload.** Never explain it away.
 

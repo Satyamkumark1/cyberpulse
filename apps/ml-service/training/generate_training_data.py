@@ -29,7 +29,7 @@ import psycopg
 # resolves to the same package the serving process imports (FR-06.4).
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.engine.features import (  # noqa: E402
+from app.engine.features import (
     FEATURE_ORDER,
     AccountInput,
     CandidateCell,

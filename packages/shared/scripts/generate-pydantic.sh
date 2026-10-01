@@ -15,8 +15,11 @@ if ! command -v datamodel-codegen &> /dev/null; then
   exit 1
 fi
 
-for schema in "$SCHEMAS_DIR"/*.schema.json; do
-  name="$(basename "$schema" .schema.json)"
+# Only the contracts the ML service speaks: it serves /health and /predict and
+# errors in the shared envelope. Web-only schemas (health, prediction,
+# predict-request) have no Python consumer.
+for name in error ml-health ml-predict-request ml-predict-response; do
+  schema="$SCHEMAS_DIR/${name}.schema.json"
   module_name="$(echo "$name" | tr '-' '_')"
   out_file="$OUT_DIR/${module_name}.py"
 

@@ -1,6 +1,6 @@
 from typing import Literal
 
-ErrorCode = Literal["FEATURE_SCHEMA_MISMATCH", "INFERENCE_FAILED", "MODEL_NOT_LOADED"]
+ErrorCode = Literal["FEATURE_SCHEMA_MISMATCH"]
 
 
 class CyberPulseError(Exception):
@@ -26,16 +26,3 @@ class FeatureSchemaMismatch(CyberPulseError):
 
     code: ErrorCode = "FEATURE_SCHEMA_MISMATCH"
 
-
-class InferenceFailed(CyberPulseError):
-    """A model or explainer call raised. Never mapped to a default score
-    (ai.md — 'Never fabricate')."""
-
-    code: ErrorCode = "INFERENCE_FAILED"
-
-
-class ModelNotLoaded(CyberPulseError):
-    """Artefacts are missing at request time. Maps to 503, not a fabricated
-    prediction (AC-006-04)."""
-
-    code: ErrorCode = "MODEL_NOT_LOADED"

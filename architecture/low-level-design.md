@@ -64,7 +64,7 @@ cyberpulse-ai/
 │   ├── generate-data/                generator.py, regions.py, patterns.py, manifest.py
 │   ├── seed/                         seed.ts
 │   └── evaluation/                   signal_check.py, pii_scan.py, no_hardcode_check.sh
-├── docker/                           Dockerfile.web, Dockerfile.ml, entrypoints
+├── docker/                           Dockerfile.ml, entrypoints
 ├── docs/                             architecture.md, ml-pipeline.md, demo-script.md, data-methodology.md
 └── docker-compose.yml
 ```

@@ -178,9 +178,6 @@ class CyberPulseError(Exception):
 class FeatureSchemaMismatch(CyberPulseError):
     code, status = "FEATURE_SCHEMA_MISMATCH", 500
 
-class ModelNotLoaded(CyberPulseError):
-    code, status = "MODEL_NOT_LOADED", 503
-
 @app.exception_handler(CyberPulseError)
 async def handle(request: Request, exc: CyberPulseError):
     logger.error("request failed", extra={
@@ -189,6 +186,8 @@ async def handle(request: Request, exc: CyberPulseError):
     })
     return JSONResponse({"error": {"code": exc.code, "message": SAFE_MESSAGES[exc.code]}}, exc.status)
 ```
+
+A missing model is not an exception: `/predict` answers 503 `ML_UNAVAILABLE` directly when the artefacts did not load.
 
 `FeatureSchemaMismatch` aborts **before inference**, never after. Scoring a misaligned vector produces a confident, plausible, wrong number, which is precisely the class of failure this system is built to prevent.
 

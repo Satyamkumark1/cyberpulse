@@ -116,13 +116,3 @@ export async function metrics(ctx: RequestContext) {
   return row ?? null;
 }
 
-export async function filterOptions(ctx: RequestContext) {
-  requireCapability(ctx.role, "reports:read");
-  const scope = complaintScope(ctx.role);
-  const rows = await db
-    .selectDistinct({ city: complaints.city, state: complaints.state })
-    .from(complaints)
-    .where(scope)
-    .orderBy(complaints.state, complaints.city);
-  return rows;
-}

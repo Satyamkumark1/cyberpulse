@@ -154,4 +154,3 @@ jobs:
           ML_SERVICE_URL: "http://localhost:8000"
           NEXT_PUBLIC_MAP_TILE_URL: "https://demotiles.maplibre.org/style.json"
       - run: docker build -f docker/Dockerfile.ml -t cyberpulse-ml:ci .
-      - run: docker build -f docker/Dockerfile.web -t cyberpulse-web:ci .

@@ -8,6 +8,7 @@ release gate, and — only if every gate clears — writes `model_metrics` and
 """
 
 import datetime as dt
+import itertools
 import json
 import sys
 from pathlib import Path
@@ -20,17 +21,27 @@ import psycopg
 import shap
 from sklearn.isotonic import IsotonicRegression
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import average_precision_score, f1_score, precision_score, recall_score, roc_auc_score
+from sklearn.metrics import (
+    average_precision_score,
+    f1_score,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+)
 from sklearn.preprocessing import StandardScaler
 from xgboost import XGBClassifier
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.engine.explain import to_factors  # noqa: E402
-from app.engine.features import FEATURE_ORDER  # noqa: E402
-from app.engine.model import CalibratedRiskModel, TemporalModel  # noqa: E402
-from training.generate_training_data import DATASET_SEED, build_dataset, database_url  # noqa: E402
-from training.train import RISK_MODEL_PARAMS, _temporal_bin  # noqa: E402
+from app.engine.explain import to_factors
+from app.engine.features import FEATURE_ORDER
+from app.engine.model import CalibratedRiskModel, TemporalModel
+from training.generate_training_data import (
+    DATASET_SEED,
+    build_dataset,
+    database_url,
+)
+from training.train import RISK_MODEL_PARAMS, _temporal_bin
 
 MODEL_VERSION: Final = "CyberPulse-Demo-v1"
 OPERATING_THRESHOLD: Final = 0.40  # settings.threshold_medium default — the "at least worth flagging" line
@@ -65,7 +76,7 @@ ABLATION_FEATURE_GROUPS: Final[dict[str, list[str]]] = {
 def expected_calibration_error(probs: np.ndarray, labels: np.ndarray, n_bins: int = NUM_CALIBRATION_BINS) -> float:
     bin_edges = np.linspace(0.0, 1.0, n_bins + 1)
     ece = 0.0
-    for lo, hi in zip(bin_edges[:-1], bin_edges[1:], strict=True):
+    for lo, hi in itertools.pairwise(bin_edges):
         mask = (probs >= lo) & (probs < hi) if hi < 1.0 else (probs >= lo) & (probs <= hi)
         if not mask.any():
             continue
