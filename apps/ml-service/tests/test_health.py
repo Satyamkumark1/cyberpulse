@@ -45,6 +45,17 @@ def test_health_reports_healthy_with_the_artifact_s_own_version_when_loaded():
 
 
 @pytest.mark.contract
+def test_health_answers_head_so_uptime_monitors_do_not_see_405():
+    # UptimeRobot checks with HEAD; a GET-only route answered 405 and the
+    # keep-warm monitor reported the service down while it was healthy.
+    with TestClient(app) as client:
+        res = client.head("/health")
+
+    assert res.status_code == 200
+    assert res.content == b""
+
+
+@pytest.mark.contract
 def test_health_response_echoes_the_request_id_header():
     with TestClient(app) as client:
         res = client.get("/health", headers={"x-request-id": "req_test_123"})

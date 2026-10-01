@@ -5,7 +5,9 @@ from app.schemas.ml_health import MlHealthResponse
 router = APIRouter()
 
 
-@router.get("/health", response_model=MlHealthResponse)
+# HEAD too: uptime monitors (the Render keep-warm ping) probe with HEAD, and a
+# GET-only route answers 405, which reads as "service down".
+@router.api_route("/health", methods=["GET", "HEAD"], response_model=MlHealthResponse)
 def health(request: Request) -> MlHealthResponse:
     # architecture/api-design.md ML-003. Reports unhealthy with
     # modelLoaded: false when the artefact is missing (AC-006-04) — never
