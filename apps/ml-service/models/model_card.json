@@ -1,7 +1,7 @@
 {
   "modelVersion": "CyberPulse-Demo-v1",
   "featureSchemaVersion": "fs-1",
-  "trainedAt": "2026-09-18T07:02:12.192274+00:00",
+  "trainedAt": "2026-10-01T06:44:07.563157+00:00",
   "datasetSeed": 26184,
   "intendedUse": "Decision support for cyber-fraud investigators: ranking candidate cash-withdrawal locations and time windows for a filed complaint.",
   "outOfScope": [
@@ -18,32 +18,32 @@
     "24-hour horizon and H3 resolution 8 are fixed assumptions"
   ],
   "metrics": {
-    "roc_auc": 0.9767953070208162,
-    "pr_auc": 0.6990942208523208,
-    "precision": 0.8130841121495327,
-    "recall": 0.8365384615384616,
-    "f1": 0.8246445497630331,
-    "calibration_ece": 0.0026565442377302646,
+    "roc_auc": 0.9783509666385664,
+    "pr_auc": 0.6927968171522167,
+    "precision": 0.8,
+    "recall": 0.8155339805825242,
+    "f1": 0.8076923076923077,
+    "calibration_ece": 0.0029713413281298425,
     "top1_hit_rate": 0.8130841121495327,
-    "top3_hit_rate": 0.8691588785046729,
-    "top5_hit_rate": 0.8878504672897196,
-    "mrr": 0.8479309112486683,
-    "temporal_exact": 0.6551724137931034,
+    "top3_hit_rate": 0.8411214953271028,
+    "top5_hit_rate": 0.8691588785046729,
+    "mrr": 0.8404873164218958,
+    "temporal_exact": 0.6627906976744186,
     "temporal_within_1": 1.0,
-    "temporal_mae_hours": 0.6896551724137931
+    "temporal_mae_hours": 0.6744186046511628
   },
   "baselines": {
-    "random": 0.05962842362736829,
+    "random": 0.0632712782487816,
     "nearest_cell": 0.009345794392523364,
-    "historical_frequency": 0.897196261682243,
-    "logistic_regression": 0.897196261682243
+    "historical_frequency": 0.8785046728971962,
+    "logistic_regression": 0.8691588785046729
   },
   "ablations": {
-    "remove_spatial": 0.8785046728971962,
-    "remove_temporal": 0.8411214953271028,
-    "remove_network": 0.8598130841121495,
-    "remove_historical_hotspot": 0.48598130841121495,
-    "shuffled_labels": 0.11214953271028037
+    "remove_spatial": 0.8598130841121495,
+    "remove_temporal": 0.8504672897196262,
+    "remove_network": 0.8504672897196262,
+    "remove_historical_hotspot": 0.5514018691588785,
+    "shuffled_labels": 0.12149532710280374
   },
   "explanationChecks": {
     "min_five_factors_rate": 1.0,

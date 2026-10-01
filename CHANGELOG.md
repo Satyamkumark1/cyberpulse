@@ -10,6 +10,27 @@ Change-management rules — what must accompany each kind of change — are defi
 
 ## [Unreleased]
 
+### Model — retrained on point-in-time historical features
+
+The committed artefacts were trained before `generate_training_data.py` stopped reading withdrawals that happened after a complaint was filed. Scored on the leak-free dataset they failed two release gates, so they were retrained (`signal_check.py` passed first). Seed 26184, same hyperparameters, same feature schema `fs-1`.
+
+| Gate | Required | Old model, leak-free data | Retrained |
+|---|---|---|---|
+| ROC-AUC | ≥ 0.85 | 0.9594 | 0.9784 |
+| PR-AUC | ≥ 0.45 | 0.4608 | 0.6928 |
+| Precision | ≥ 0.75 | 1.0000 | 0.8000 |
+| Recall | ≥ 0.70 | **0.0583 FAIL** | 0.8155 |
+| F1 | ≥ 0.72 | **0.1101 FAIL** | 0.8077 |
+| ECE | ≤ 0.10 | 0.0164 | 0.0030 |
+| Top-1 hit rate | ≥ 0.45 | 0.5981 | 0.8131 |
+| Top-3 hit rate | ≥ 0.72 | 0.8131 | 0.8411 |
+| Top-5 hit rate | ≥ 0.85 | 0.8692 | 0.8692 |
+| MRR | ≥ 0.58 | 0.7179 | 0.8405 |
+| Temporal exact | ≥ 0.40 | 0.7093 | 0.6628 |
+| Temporal within ±1 | ≥ 0.75 | 1.0000 | 1.0000 |
+
+Baselines on top-3 hit rate: historical frequency 0.8785 and logistic regression 0.8692 both exceed XGBoost's 0.8411. Shuffled-label ablation 0.1215 against random 0.0633.
+
 ### Added — Deployment
 
 - `render.yaml` for the ML service (Docker, Singapore, one worker, `/health` check), as `devops/infrastructure.md` already described. Built and run locally under a 512 MB cap: `modelLoaded: true`, 184 MB resident.
