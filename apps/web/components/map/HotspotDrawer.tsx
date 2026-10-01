@@ -141,7 +141,7 @@ export function HotspotDrawer({ h3Index, onClose, embedded = false }: { h3Index:
           </div>
         ) : null}
 
-        {isAlertModalOpen && data && data.predictionRef && data.expectedStart && data.expectedEnd ? (
+        {isAlertModalOpen && data && data.predictionRef && data.estimatedExposurePaise !== null && data.expectedStart && data.expectedEnd ? (
           <AlertModal
             prediction={{
               predictionRef: data.predictionRef,
@@ -157,7 +157,7 @@ export function HotspotDrawer({ h3Index, onClose, embedded = false }: { h3Index:
               },
               riskScore: data.riskScore,
               riskLevel: data.riskLevel,
-              estimatedExposurePaise: data.estimatedExposurePaise ?? 0,
+              estimatedExposurePaise: data.estimatedExposurePaise,
               factors: data.topFactors,
             }}
             onClose={() => setIsAlertModalOpen(false)}

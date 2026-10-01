@@ -222,5 +222,8 @@ export async function getDetail(h3Index: string, ctx: RequestContext) {
     nearbyAtms,
     topFactors,
     relatedComplaints,
+    // AC-010-05: the drawer's "Generate Alert" needs the prediction to alert on.
+    predictionRef: latestPrediction?.predictionRef ?? null,
+    estimatedExposurePaise: latestPrediction ? Number(latestPrediction.estimatedExposurePaise) : null,
   };
 }

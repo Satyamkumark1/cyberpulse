@@ -178,7 +178,7 @@ def predict(payload: MlPredictRequest, request: Request) -> Response:
         factors=factors,
         explanationAvailable=explanation_available,
         clusteringFallback=clustering_fallback,
-        modelVersion="CyberPulse-Demo-v1",
+        modelVersion=artifacts.model_version,
         featureSchemaVersion=str(artifacts.feature_schema.get("version", "")),
         inferenceMs=total_ms,
         pipelineStages=stages,

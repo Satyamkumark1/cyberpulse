@@ -122,10 +122,16 @@ const CAPABILITY_MATRIX: Record<Capability, Record<ActorRole, boolean>> = {
   "citizenReports:status": { LEA: false, BANK: false, ADMIN: false, GUARD: false, I4C: false, CITIZEN: true },
 };
 
+/** For server-rendered UI that hides an action the role lacks. Never an
+ * authorisation decision — services still call requireCapability. */
+export function hasCapability(role: ActorRole, capability: Capability): boolean {
+  return CAPABILITY_MATRIX[capability][role];
+}
+
 /** Stage 1 of two (security/authorization.md §1). Throws ForbiddenError —
  * never returns false — so a caller cannot forget to check the result. */
 export function requireCapability(role: ActorRole, capability: Capability): void {
-  if (!CAPABILITY_MATRIX[capability][role]) {
+  if (!hasCapability(role, capability)) {
     throw new ForbiddenError();
   }
 }

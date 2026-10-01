@@ -1,8 +1,9 @@
 import Link from "next/link";
+import { FactorBar } from "@/components/common/FactorBar";
 import { notFound } from "next/navigation";
 import { randomUUID } from "node:crypto";
 import { formatTimestampIst, formatPaise, formatScorePercent } from "@/lib/formatters";
-import { resolveRoleFromNextHeaders } from "@/services/lib/auth";
+import { hasCapability, resolveRoleFromNextHeaders } from "@/services/lib/auth";
 import { get } from "@/services/investigationService";
 import { InvestigationActionPanel } from "@/components/investigations/InvestigationActionPanel";
 import { MoneyTrailGraphLazy } from "@/components/graph/MoneyTrailGraphLoader";
@@ -22,11 +23,6 @@ const PRIORITY_CLASS: Record<string, string> = {
   HIGH: "text-orange-600",
   MEDIUM: "text-yellow-700",
   LOW: "text-slate-500",
-};
-
-const DIRECTION_ICON: Record<string, string> = {
-  INCREASES: "↑",
-  REDUCES: "↓",
 };
 
 export default async function InvestigationDetailPage({
@@ -72,7 +68,8 @@ export default async function InvestigationDetailPage({
           caseId={caseId}
           currentStatus={inv.status}
           currentUpdatedAt={inv.updatedAt}
-          role={role}
+          canTransition={hasCapability(role, "investigations:transition")}
+          canNote={hasCapability(role, "investigations:addNote")}
         />
       </div>
 
@@ -120,7 +117,7 @@ export default async function InvestigationDetailPage({
                 <dt className="text-slate-500">Level</dt>
                 <dd className="text-slate-800">{latestPrediction.riskLevel}</dd>
                 <dt className="text-slate-500">Confidence</dt>
-                <dd className="text-slate-800">{formatScorePercent(Number(latestPrediction.confidence))}</dd>
+                <dd className="text-slate-800">{latestPrediction.confidence}</dd>
                 {latestPrediction.hotspot && (
                   <>
                     <dt className="text-slate-500">Hotspot</dt>
@@ -135,14 +132,9 @@ export default async function InvestigationDetailPage({
                   <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Risk factors
                   </h3>
-                  <ul className="space-y-1">
-                    {latestPrediction.factors.map((f, i) => (
-                      <li key={i} className="flex items-center justify-between rounded-sm bg-slate-50 px-3 py-2 text-sm">
-                        <span className="text-slate-700">{f.name}</span>
-                        <span className={f.direction === "INCREASES" ? "text-red-600" : "text-green-600"}>
-                          {DIRECTION_ICON[f.direction]} {(f.contribution * 100).toFixed(1)}%
-                        </span>
-                      </li>
+                  <ul>
+                    {latestPrediction.factors.map((f) => (
+                      <FactorBar key={f.name} name={f.name} contribution={f.contribution} direction={f.direction} />
                     ))}
                   </ul>
                 </div>

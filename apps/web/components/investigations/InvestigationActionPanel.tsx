@@ -6,7 +6,9 @@ interface Props {
   caseId: string;
   currentStatus: string;
   currentUpdatedAt: string;
-  role: string;
+  // Decided server-side from the capability matrix; the API still enforces it.
+  canTransition: boolean;
+  canNote: boolean;
 }
 
 // Complete UI transition map mirrors investigationStateMachine.ts, including
@@ -26,7 +28,7 @@ const NOTE_REQUIRED: Record<string, string[]> = {
   MONITORING: ["ALERT_SENT", "RESOLVED"],
 };
 
-export function InvestigationActionPanel({ caseId, currentStatus, currentUpdatedAt, role }: Props) {
+export function InvestigationActionPanel({ caseId, currentStatus, currentUpdatedAt, canTransition, canNote }: Props) {
   const [targetStatus, setTargetStatus] = useState<string>("");
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
@@ -38,12 +40,6 @@ export function InvestigationActionPanel({ caseId, currentStatus, currentUpdated
   const [noteError, setNoteError] = useState<string | null>(null);
 
   const nextStatuses = NEXT_STATUSES[currentStatus] ?? [];
-  // Mirrors CAPABILITY_MATRIX: BANK and I4C both lack investigations:transition;
-  // I4C alone also lacks investigations:addNote (BANK holds that one). A UI
-  // convenience matching the server rule — the server still enforces it
-  // regardless.
-  const canTransition = role !== "BANK" && role !== "I4C";
-  const canNote = role !== "I4C";
 
   async function handleTransition(e: React.FormEvent) {
     e.preventDefault();

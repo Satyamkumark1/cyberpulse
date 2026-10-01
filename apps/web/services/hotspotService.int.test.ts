@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { db, dbSchema } from "@cyberpulse/db";
+import { desc, eq } from "drizzle-orm";
 import { NotFoundError } from "@/lib/errors";
 import { getDetail, list } from "./hotspotService";
 
-const { hotspots } = dbSchema;
+const { hotspots, predictions } = dbSchema;
 const ctx = { role: "LEA" as const, requestId: "test", origin: "USER" as const };
 
 describe("hotspotService.list — architecture/api-design.md API-030", () => {
@@ -17,6 +18,20 @@ describe("hotspotService.list — architecture/api-design.md API-030", () => {
 });
 
 describe("hotspotService.getDetail — architecture/api-design.md API-031", () => {
+  it("carries the latest prediction's reference and exposure, so the drawer can open the alert modal (AC-010-05)", async () => {
+    const [latest] = await db
+      .select({ h3Index: hotspots.h3Index, predictionRef: predictions.predictionRef, exposure: predictions.estimatedExposurePaise })
+      .from(predictions)
+      .innerJoin(hotspots, eq(hotspots.id, predictions.hotspotId))
+      .orderBy(desc(predictions.createdAt))
+      .limit(1);
+    if (!latest) throw new Error("fixture precondition failed: no prediction — run a /predict call");
+
+    const result = await getDetail(latest.h3Index, ctx);
+    expect(result.predictionRef).toBe(latest.predictionRef);
+    expect(result.estimatedExposurePaise).toBe(Number(latest.exposure));
+  });
+
   it("returns nearby ATMs sorted by ascending distance for a real hotspot (AC-010-04)", async () => {
     const [seeded] = await db.select({ h3Index: hotspots.h3Index }).from(hotspots).limit(1);
     if (!seeded) throw new Error("fixture precondition failed: no seeded hotspot to test against");

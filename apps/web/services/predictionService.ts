@@ -174,7 +174,6 @@ export async function predict(input: PredictInput, ctx: RequestContext): Promise
   };
 
   const mlResponse: MlPredictResponse = await callPredict(mlRequest, ctx.requestId);
-  const exposurePaise = await computeExposurePaise(mlResponse.predictedLocation.h3Index, complaint.complaintTimestamp);
 
   const { hotspot, prediction, factors } = await db.transaction(async (tx) => {
     const [hotspotRow] = await tx
@@ -223,7 +222,6 @@ export async function predict(input: PredictInput, ctx: RequestContext): Promise
         windowConfidence: mlResponse.expectedWindow.confidence,
         windowFallback: mlResponse.expectedWindow.fallback,
         likelyAtms: mlResponse.likelyAtms,
-        estimatedExposurePaise: exposurePaise,
         rankedHotspots: mlResponse.rankedHotspots,
         explanationAvailable: mlResponse.explanationAvailable,
         clusteringFallback: mlResponse.clusteringFallback,
@@ -235,9 +233,10 @@ export async function predict(input: PredictInput, ctx: RequestContext): Promise
       .returning();
     if (!inserted) throw new Error("prediction insert returned no row");
 
+    const exposurePaise = await computeExposurePaise(mlResponse.predictedLocation.h3Index, complaint.complaintTimestamp, tx);
     const [predictionRow] = await tx
       .update(predictions)
-      .set({ predictionRef: `PRD-${String(inserted.id).padStart(4, "0")}` })
+      .set({ predictionRef: `PRD-${String(inserted.id).padStart(4, "0")}`, estimatedExposurePaise: exposurePaise })
       .where(eq(predictions.id, inserted.id))
       .returning();
     if (!predictionRow) throw new Error("prediction ref update returned no row");

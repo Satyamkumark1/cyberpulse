@@ -1,5 +1,6 @@
 import { RECIPIENT_LABELS, type RecipientKind } from "@cyberpulse/shared/enums";
 import Link from "next/link";
+import { FactorBar } from "@/components/common/FactorBar";
 import { notFound } from "next/navigation";
 import { randomUUID } from "node:crypto";
 import { formatTimestampIst, formatWindowIst, formatPaise, formatScorePercent } from "@/lib/formatters";
@@ -14,11 +15,6 @@ const SEVERITY_CLASS: Record<string, string> = {
   HIGH: "bg-orange-100 text-orange-700",
   MEDIUM: "bg-yellow-100 text-yellow-700",
   LOW: "bg-slate-100 text-slate-600",
-};
-
-const DIRECTION_ICON: Record<string, string> = {
-  INCREASES: "↑",
-  REDUCES: "↓",
 };
 
 export default async function AlertDetailPage({
@@ -130,7 +126,7 @@ export default async function AlertDetailPage({
                 <dt className="text-slate-500">Level</dt>
                 <dd className="text-slate-800">{alert.prediction.riskLevel}</dd>
                 <dt className="text-slate-500">Confidence</dt>
-                <dd className="text-slate-800">{formatScorePercent(Number(alert.prediction.confidence))}</dd>
+                <dd className="text-slate-800">{alert.prediction.confidence}</dd>
               </dl>
 
               {alert.prediction.factors.length > 0 && (
@@ -138,14 +134,9 @@ export default async function AlertDetailPage({
                   <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Top risk factors
                   </h3>
-                  <ul className="space-y-1">
-                    {alert.prediction.factors.map((f, i) => (
-                      <li key={i} className="flex items-center justify-between rounded-sm bg-slate-50 px-3 py-2 text-sm">
-                        <span className="text-slate-700">{f.name}</span>
-                        <span className={f.direction === "INCREASES" ? "text-red-600" : "text-green-600"}>
-                          {DIRECTION_ICON[f.direction]} {(f.contribution * 100).toFixed(1)}%
-                        </span>
-                      </li>
+                  <ul>
+                    {alert.prediction.factors.map((f) => (
+                      <FactorBar key={f.name} name={f.name} contribution={f.contribution} direction={f.direction} />
                     ))}
                   </ul>
                 </div>

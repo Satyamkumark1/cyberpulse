@@ -31,6 +31,14 @@ The committed artefacts were trained before `generate_training_data.py` stopped 
 
 Baselines on top-3 hit rate: historical frequency 0.8785 and logistic regression 0.8692 both exceed XGBoost's 0.8411. Shuffled-label ablation 0.1215 against random 0.0633.
 
+### Fixed — values shown that the model did not produce
+
+- Alert and investigation detail pages multiplied an already-percentage factor contribution by 100 ("7780.0%") and passed the confidence level through a number formatter ("NaN%"). Both now render through `FactorBar` and the level text. Covered by `tests/demo/prediction-detail.spec.ts`, which compares the page to the API response.
+- `estimatedExposurePaise` was computed before the transaction wrote the new prediction, so the complaint was missing from its own cell's total and every first prediction stored ₹0. It is now computed inside the transaction and written with the row (`services/predictionService.int.test.ts`).
+- Hotspot detail (API-031) now returns the latest prediction's `predictionRef` and exposure, so the drawer's Generate Alert (AC-010-05) can appear; the drawer no longer substitutes ₹0 for an absent exposure.
+- The ML service reported the literal `CyberPulse-Demo-v1` on every prediction; it now reports the loaded `model_card.json` version (`tests/test_predict_version.py`).
+- The investigation action panel takes `canTransition`/`canNote` from the capability matrix (`hasCapability`) instead of restating role rules.
+
 ### Fixed — predictions failed in a UTC database session
 
 Postgres prints a whole-hour offset as `+00`, and drizzle passes `timestamptz` text through untouched. Pydantic rejects `+00`, so against Neon every `/predict` returned an ML 422; it only worked locally because that database ran in IST (`+05:30`). `packages/db/client.ts` now completes the offset to `+00:00`, keeping microseconds. Covered by `services/timestamps.int.test.ts`.

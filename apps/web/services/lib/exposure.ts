@@ -28,11 +28,19 @@ export function isEligibleForExposure(
  *     AND C.status NOT IN ('RESOLVED')
  *     AND C.complaint_timestamp within the prediction's 24-hour horizon
  */
-export async function computeExposurePaise(hotspotH3Index: string, referenceTimestamp: string): Promise<number> {
+//
+// Pass the transaction that just wrote the new prediction: "latest
+// prediction" must include it, or the complaint being predicted is missing
+// from its own cell's exposure (it read 0 on every first prediction).
+export async function computeExposurePaise(
+  hotspotH3Index: string,
+  referenceTimestamp: string,
+  executor: Pick<typeof db, "select" | "selectDistinctOn"> = db,
+): Promise<number> {
   const horizonStart = new Date(new Date(referenceTimestamp).getTime() - HORIZON_HOURS * 3600_000).toISOString();
   const horizonEnd = new Date(new Date(referenceTimestamp).getTime() + HORIZON_HOURS * 3600_000).toISOString();
 
-  const latestPredictionPerComplaint = db
+  const latestPredictionPerComplaint = executor
     .selectDistinctOn([predictions.complaintId], {
       complaintId: predictions.complaintId,
       hotspotId: predictions.hotspotId,
@@ -41,7 +49,7 @@ export async function computeExposurePaise(hotspotH3Index: string, referenceTime
     .orderBy(predictions.complaintId, sql`${predictions.createdAt} desc`)
     .as("latest_prediction_for_exposure");
 
-  const rows = await db
+  const rows = await executor
     .select({ total: sql<number>`coalesce(sum(${complaints.amountPaise}), 0)::bigint` })
     .from(complaints)
     .innerJoin(latestPredictionPerComplaint, eq(latestPredictionPerComplaint.complaintId, complaints.id))

@@ -20,6 +20,7 @@ class PredictionArtifacts:
     temporal_model: TemporalModel
     feature_schema: dict[str, object]
     explainer: shap.TreeExplainer
+    model_version: str
 
 
 def load_prediction_artifacts(model_dir: str) -> PredictionArtifacts | None:
@@ -29,15 +30,23 @@ def load_prediction_artifacts(model_dir: str) -> PredictionArtifacts | None:
     risk_path = directory / "risk_model.joblib"
     temporal_path = directory / "temporal_model.joblib"
     schema_path = directory / "feature_schema.json"
+    card_path = directory / "model_card.json"
 
-    if not (risk_path.exists() and temporal_path.exists() and schema_path.exists()):
+    if not (risk_path.exists() and temporal_path.exists() and schema_path.exists() and card_path.exists()):
         return None
 
     risk_model: CalibratedRiskModel = joblib.load(risk_path)
     temporal_model: TemporalModel = joblib.load(temporal_path)
     feature_schema = json.loads(schema_path.read_text())
     explainer = shap.TreeExplainer(risk_model.classifier)
+    # Reported on every prediction, so it must come from the artefact that
+    # was loaded, never a literal (a rolled-back image would otherwise lie).
+    model_version = str(json.loads(card_path.read_text())["modelVersion"])
 
     return PredictionArtifacts(
-        risk_model=risk_model, temporal_model=temporal_model, feature_schema=feature_schema, explainer=explainer
+        risk_model=risk_model,
+        temporal_model=temporal_model,
+        feature_schema=feature_schema,
+        explainer=explainer,
+        model_version=model_version,
     )
