@@ -23,6 +23,14 @@ if (!databaseUrl) {
 const queryClient = postgres(databaseUrl, { max: 10, idle_timeout: 20 });
 
 export const db = drizzle(queryClient, { schema });
+
+// drizzle() above installs a pass-through timestamptz (OID 1184) parser, so
+// the raw Postgres text reaches the app. In a UTC session (Neon, Vercel) that
+// text ends "+00", which Pydantic rejects — every /predict became an ML 422.
+// Completing the offset to "+00:00" is lossless: microseconds survive, so
+// optimistic-concurrency comparisons on updated_at still match. Must run after
+// drizzle(), which would otherwise overwrite it.
+queryClient.options.parsers[1184] = (value: string) => value.replace(/([+-]\d{2})$/, "$1:00");
 export * as dbSchema from "./schema";
 
 // Keeps drizzle-orm an implementation detail of this package — callers
