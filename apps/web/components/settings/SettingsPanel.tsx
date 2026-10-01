@@ -3,16 +3,11 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { StatePanel } from "@/components/common/StatePanel";
+import { apiFetch, jsonInit } from "@/lib/apiFetch";
+import type { HealthResponse } from "@cyberpulse/shared/zod/health";
 
 interface Settings { thresholdHigh: number; thresholdMedium: number; systemMode: string; dataMode: string; activeModelVersion: string; notifyToastOnAlert: boolean | null; notifyAnnouncePrediction: boolean | null; }
-interface HealthComponent { status: string; latencyMs: number; }
-interface Health { status: string; checkedAt: string; web: HealthComponent; database: HealthComponent; mlService: HealthComponent; }
-
-async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("Request failed");
-  return res.json();
-}
+type HealthComponent = HealthResponse["web"];
 
 // RULE-frontend.md non-negotiable #2: colour AND text AND icon for any
 // status — text alone is not enough, even for an operational (non-risk) status.
@@ -35,8 +30,8 @@ function StatusLabel({ status }: { status: string }) {
 }
 
 export function SettingsPanel({ role }: { role: string }) {
-  const settings = useQuery({ queryKey: ["settings"], queryFn: () => fetchJson<Settings>("/api/settings") });
-  const health = useQuery({ queryKey: ["health"], queryFn: () => fetchJson<Health>("/api/health") });
+  const settings = useQuery({ queryKey: ["settings"], queryFn: () => apiFetch<Settings>("/api/settings") });
+  const health = useQuery({ queryKey: ["health"], queryFn: () => apiFetch<HealthResponse>("/api/health") });
 
   if (settings.isError) return <StatePanel state="error" message="Unable to load settings." onRetry={() => settings.refetch()} />;
   if (settings.isLoading || !settings.data) return <StatePanel state="loading" title="Loading settings" message="Retrieving configuration and service health." />;
@@ -75,16 +70,16 @@ function SettingsForm({ role, initial }: { role: string; initial: Settings }) {
 
   const mutation = useMutation({
     mutationFn: (input: Settings) =>
-      fetch("/api/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
-        thresholdHigh: input.thresholdHigh,
-        thresholdMedium: input.thresholdMedium,
-        notifyToastOnAlert: input.notifyToastOnAlert ?? false,
-        notifyAnnouncePrediction: input.notifyAnnouncePrediction ?? false,
-      }) }).then(async (res) => {
-        const body = await res.json();
-        if (!res.ok) throw new Error(body.error?.message ?? "Unable to save settings.");
-        return body as Settings;
-      }),
+      apiFetch<Settings>(
+        "/api/settings",
+        jsonInit("PATCH", {
+          thresholdHigh: input.thresholdHigh,
+          thresholdMedium: input.thresholdMedium,
+          notifyToastOnAlert: input.notifyToastOnAlert ?? false,
+          notifyAnnouncePrediction: input.notifyAnnouncePrediction ?? false,
+        }),
+        "Unable to save settings.",
+      ),
     onSuccess: (saved) => {
       setDraft(saved);
       queryClient.setQueryData(["settings"], saved);

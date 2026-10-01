@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ApiError, apiFetch } from "@/lib/apiFetch";
 
 interface Props {
   alertId: string;
@@ -15,19 +16,12 @@ export function AcknowledgeAlertButton({ alertId }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/alerts/${encodeURIComponent(alertId)}/acknowledge`, {
-        method: "POST",
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        setError((body as { error?: { message?: string } }).error?.message ?? "Failed to acknowledge alert.");
-        return;
-      }
+      await apiFetch(`/api/alerts/${encodeURIComponent(alertId)}/acknowledge`, { method: "POST" }, "Failed to acknowledge alert.");
       setDone(true);
       // Reload page to reflect new status
       window.location.reload();
-    } catch {
-      setError("Network error — please try again.");
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Network error — please try again.");
     } finally {
       setLoading(false);
     }

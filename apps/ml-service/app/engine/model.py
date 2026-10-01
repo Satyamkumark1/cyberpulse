@@ -6,14 +6,13 @@ not be unpickled by the DB-less serving process at all.
 """
 
 from dataclasses import dataclass
-from typing import Final
 
 import numpy as np
 import numpy.typing as npt
 from sklearn.isotonic import IsotonicRegression
 from xgboost import XGBClassifier
 
-NUM_TEMPORAL_BINS: Final = 12
+from app.engine.temporal import NUM_BINS as NUM_TEMPORAL_BINS
 
 
 @dataclass

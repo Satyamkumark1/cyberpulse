@@ -6,6 +6,7 @@ import type { AlertSeverity, AlertStatus } from "@cyberpulse/shared/enums";
 import { RiskBadge } from "@/components/common/RiskBadge";
 import { StatePanel } from "@/components/common/StatePanel";
 import { formatPaise, formatTimestampIst } from "@/lib/formatters";
+import { apiFetch } from "@/lib/apiFetch";
 
 interface RecentAlertItem {
   id: number;
@@ -24,11 +25,7 @@ interface AlertListResponse {
 }
 
 async function fetchRecentAlerts(): Promise<AlertListResponse> {
-  const res = await fetch("/api/alerts?pageSize=5");
-  if (!res.ok) {
-    throw new Error("Failed to load alerts");
-  }
-  return res.json();
+  return apiFetch("/api/alerts?pageSize=5", undefined, "Failed to load alerts");
 }
 
 /**

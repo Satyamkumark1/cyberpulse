@@ -3,6 +3,10 @@
 // than codegen'd (same rationale as components/graph/types.ts).
 import type { RiskLevel } from "@cyberpulse/shared/enums";
 
+// Map paint colours per risk level (pins, cell fills). Shared by the risk map
+// and the prediction panel's map so the two never disagree.
+export const RISK_COLORS: Record<RiskLevel, string> = { HIGH: "#C0392B", MEDIUM: "#C97A0E", LOW: "#1F7A47" };
+
 export interface HotspotListItem {
   h3Index: string;
   name: string;

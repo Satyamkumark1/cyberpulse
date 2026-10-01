@@ -6,6 +6,7 @@ import { RECIPIENT_KINDS, RECIPIENT_LABELS, type RecipientKind, type RiskLevel }
 import { RiskBadge } from "@/components/common/RiskBadge";
 import { useFocusTrap } from "@/components/common/useFocusTrap";
 import { formatPaise, formatScorePercent, formatWindowIst } from "@/lib/formatters";
+import { apiFetch, jsonInit } from "@/lib/apiFetch";
 
 interface GuardPostCoverageRow {
   postId: string;
@@ -23,11 +24,8 @@ function formatShiftIst(startHour: number, endHour: number): string {
 function SiteCoverage({ h3Index }: { h3Index: string }) {
   const coverage = useQuery({
     queryKey: ["guard-posts", h3Index],
-    queryFn: async (): Promise<{ posts: GuardPostCoverageRow[] }> => {
-      const res = await fetch(`/api/guard-posts?h3Index=${encodeURIComponent(h3Index)}`);
-      if (!res.ok) throw new Error("coverage unavailable");
-      return res.json();
-    },
+    queryFn: () =>
+      apiFetch<{ posts: GuardPostCoverageRow[] }>(`/api/guard-posts?h3Index=${encodeURIComponent(h3Index)}`, undefined, "coverage unavailable"),
   });
 
   // Coverage is supporting context, never a precondition for sending the
@@ -121,24 +119,12 @@ export function AlertModal({ prediction, onClose, onSuccess, headers }: AlertMod
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const mutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch("/api/alerts", {
-        method: "POST",
-        headers: { "content-type": "application/json", ...headers },
-        body: JSON.stringify({
-          predictionRef: prediction.predictionRef,
-          recipients,
-          notes: notes.trim() || undefined,
-        }),
-      });
-
-      if (!res.ok) {
-        const body = (await res.json()) as { error: { message: string } };
-        throw new Error(body.error?.message ?? "Failed to dispatch alert");
-      }
-
-      return (await res.json()) as CreateAlertResponse;
-    },
+    mutationFn: () =>
+      apiFetch<CreateAlertResponse>(
+        "/api/alerts",
+        jsonInit("POST", { predictionRef: prediction.predictionRef, recipients, notes: notes.trim() || undefined }, headers),
+        "Failed to dispatch alert",
+      ),
     onSuccess: (data) => {
       // Invalidate queries so dashboard, alerts list, and investigation timeline reflect the alert
       queryClient.invalidateQueries({ queryKey: ["alerts"] });

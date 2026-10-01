@@ -10,23 +10,9 @@ import {
   type InvestigationStatus,
   type PriorityLevel,
 } from "@cyberpulse/shared/enums";
+import { BADGE_FALLBACK, INVESTIGATION_STATUS_CLASS, PRIORITY_CLASS } from "@/components/common/badges";
 
 export const metadata = { title: "Investigations — CyberPulse AI" };
-
-const STATUS_CLASS: Record<string, string> = {
-  NEW: "bg-slate-100 text-slate-600",
-  ANALYZING: "bg-blue-100 text-blue-700",
-  UNDER_REVIEW: "bg-purple-100 text-purple-700",
-  ALERT_SENT: "bg-orange-100 text-orange-700",
-  RESOLVED: "bg-green-100 text-green-700",
-  MONITORING: "bg-cyan-100 text-cyan-700",
-};
-
-const PRIORITY_CLASS: Record<string, string> = {
-  HIGH: "text-orange-600 font-semibold",
-  MEDIUM: "text-yellow-700",
-  LOW: "text-slate-500",
-};
 
 export default async function InvestigationsPage({
   searchParams,
@@ -154,7 +140,7 @@ export default async function InvestigationsPage({
                     </td>
                     <td className="px-4 py-3 font-mono text-xs text-slate-600">{inv.complaintId}</td>
                     <td className="px-4 py-3">
-                      <span className={`rounded px-2 py-0.5 text-xs font-medium ${STATUS_CLASS[inv.status] ?? "bg-slate-100 text-slate-600"}`}>
+                      <span className={`rounded px-2 py-0.5 text-xs font-medium ${INVESTIGATION_STATUS_CLASS[inv.status] ?? BADGE_FALLBACK}`}>
                         {inv.status.replace(/_/g, " ")}
                       </span>
                     </td>

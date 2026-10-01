@@ -7,15 +7,9 @@ import { formatTimestampIst, formatWindowIst, formatPaise, formatScorePercent } 
 import { resolveRoleFromNextHeaders } from "@/services/lib/auth";
 import { get } from "@/services/alertService";
 import { AcknowledgeAlertButton } from "@/components/alerts/AcknowledgeAlertButton";
+import { BADGE_FALLBACK, SEVERITY_CLASS } from "@/components/common/badges";
 
 export const metadata = { title: "Alert Detail — CyberPulse AI" };
-
-const SEVERITY_CLASS: Record<string, string> = {
-  CRITICAL: "bg-red-100 text-red-700",
-  HIGH: "bg-orange-100 text-orange-700",
-  MEDIUM: "bg-yellow-100 text-yellow-700",
-  LOW: "bg-slate-100 text-slate-600",
-};
 
 export default async function AlertDetailPage({
   params,
@@ -47,7 +41,7 @@ export default async function AlertDetailPage({
           <p className="mt-1 text-sm text-slate-500">{alert.locationName}</p>
         </div>
         <div className="flex items-center gap-3">
-          <span className={`rounded px-2 py-1 text-sm font-medium ${SEVERITY_CLASS[alert.severity] ?? "bg-slate-100 text-slate-600"}`}>
+          <span className={`rounded px-2 py-1 text-sm font-medium ${SEVERITY_CLASS[alert.severity] ?? BADGE_FALLBACK}`}>
             {alert.severity}
           </span>
           {alert.status === "SENT" && (

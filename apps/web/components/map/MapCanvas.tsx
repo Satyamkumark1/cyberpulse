@@ -13,7 +13,8 @@ import { HotspotDrawer } from "./HotspotDrawer";
 import { MapAccessibleTable } from "./MapAccessibleTable";
 import { MapSearch } from "./MapSearch";
 import { LocationDetails } from "./LocationDetails";
-import type { AtmListItem, HotspotListItem, HotspotDetail } from "./types";
+import { RISK_COLORS, type AtmListItem, type HotspotListItem, type HotspotDetail } from "./types";
+import { apiFetch } from "@/lib/apiFetch";
 
 setWorkerUrl("/maplibre-gl-worker.mjs");
 const configuredStyle = process.env.NEXT_PUBLIC_MAP_TILE_URL;
@@ -21,14 +22,11 @@ const configuredStyle = process.env.NEXT_PUBLIC_MAP_TILE_URL;
 const STREET_STYLE = !configuredStyle || configuredStyle.includes("demotiles.maplibre.org")
   ? "https://tiles.openfreemap.org/styles/liberty" : configuredStyle;
 const EMPTY_STYLE: StyleSpecification = { version: 8, sources: {}, layers: [{ id: "background", type: "background", paint: { "background-color": "#ecf0f6" } }] };
-const RISK_COLORS = { HIGH: "#C0392B", MEDIUM: "#C97A0E", LOW: "#1F7A47" } as const;
 const INDIA_BBOX = [INDIA_BOUNDS.lonMin, INDIA_BOUNDS.latMin, INDIA_BOUNDS.lonMax, INDIA_BOUNDS.latMax].join(",");
 interface SelectedPoint { latitude: number; longitude: number; place?: PlaceLocation; atm?: AtmListItem }
 
 async function readData<T>(url: string, signal: AbortSignal): Promise<T> {
-  const response = await fetch(url, { signal });
-  if (!response.ok) throw new Error("Map data could not be loaded.");
-  return response.json();
+  return apiFetch(url, { signal }, "Map data could not be loaded.");
 }
 function webglAvailable() {
   try { return Boolean(document.createElement("canvas").getContext("webgl2")); } catch { return false; }

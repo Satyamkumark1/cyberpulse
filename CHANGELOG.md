@@ -31,6 +31,12 @@ The committed artefacts were trained before `generate_training_data.py` stopped 
 
 Baselines on top-3 hit rate: historical frequency 0.8785 and logistic regression 0.8692 both exceed XGBoost's 0.8411. Shuffled-label ablation 0.1215 against random 0.0633.
 
+### Changed — one copy of each duplicated helper
+
+- `lib/apiFetch.ts` (`apiFetch`, `ApiError`, `jsonInit`) is the single client-side reader of the error envelope, typed from `@cyberpulse/shared/zod/error`. It replaces 16 hand-rolled `fetch` + error-parsing blocks and the separate `CitizenApiError`; citizen pages still render by code, never server text (ADR-020). `RoleSwitcher` keeps its own fire-and-forget call.
+- `components/common/badges.ts` holds the severity / status / priority pill classes four pages had copied (they had already drifted). `RISK_COLORS` lives once in `components/map/types.ts`. `SettingsPanel` uses the shared `HealthResponse` type.
+- Training: `train_risk_model(..., feature_cols)` also serves evaluate.py's baselines and ablations; temporal bin count and width come from `app/engine/temporal.py`; seed and feature-schema version from their single definitions. All 12 evaluation gates reproduce exactly.
+
 ### Removed — dead code, unused files, the web Docker image
 
 - Web: `UnauthorizedError`, `logger.withRequest`, `reportService.filterOptions` (no callers). The rate limiter's hand-built 429 now goes through `toErrorResponse(new RateLimitedError())`, the single serialiser.

@@ -13,6 +13,7 @@ import { HotspotMapLazy } from "@/components/prediction/HotspotMapLoader";
 import { usePrediction } from "@/components/prediction/usePrediction";
 import { ANALYSIS_STEP, nextAutoStep } from "@/components/demo/autoAdvance";
 import { formatPaise, formatScorePercent, formatTimestampIst, formatWindowIst } from "@/lib/formatters";
+import { apiFetch } from "@/lib/apiFetch";
 
 const DEMO_HEADERS = { "x-cyberpulse-origin": "DEMO" } as const;
 
@@ -53,12 +54,7 @@ interface DemoComplaint {
 }
 
 async function fetchDemoComplaint(complaintId: string): Promise<DemoComplaint> {
-  const res = await fetch(`/api/complaints/${complaintId}`);
-  if (!res.ok) {
-    const body = (await res.json()) as { error: { message: string } };
-    throw new Error(body.error.message);
-  }
-  return res.json();
+  return apiFetch(`/api/complaints/${complaintId}`);
 }
 
 function useDemoNav() {

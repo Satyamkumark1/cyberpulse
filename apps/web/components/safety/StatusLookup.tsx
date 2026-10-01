@@ -5,7 +5,8 @@ import { useMutation } from "@tanstack/react-query";
 import { formatTimestampIst } from "@/lib/formatters";
 import { COPY, type Lang } from "@/lib/safety/copy";
 import { loadLastReport, type LastReport } from "@/lib/safety/lastReport";
-import { CitizenApiError, fetchStatus } from "./citizenApi";
+import { fetchStatus } from "./citizenApi";
+import { ApiError } from "@/lib/apiFetch";
 import { StatusTimeline } from "./StatusTimeline";
 
 /** FEAT-17 status lookup (FR-29, AC-017-07, AC-017-10). Never cached: the
@@ -36,7 +37,7 @@ export function StatusLookup({ lang, initialComplaintId }: { lang: Lang; initial
   };
 
   const errorText =
-    mutation.error instanceof CitizenApiError
+    mutation.error instanceof ApiError
       ? mutation.error.code === "NOT_FOUND"
         ? t.notFound
         : mutation.error.code === "VALIDATION_ERROR"

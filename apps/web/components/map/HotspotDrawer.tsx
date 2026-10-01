@@ -10,14 +10,10 @@ import { useFocusTrap } from "@/components/common/useFocusTrap";
 import { formatDistanceMeters, formatPaise, formatScorePercent, formatWindowIst } from "@/lib/formatters";
 import type { HotspotDetail } from "./types";
 import { LocationDetails } from "./LocationDetails";
+import { apiFetch } from "@/lib/apiFetch";
 
 async function fetchHotspotDetail(h3Index: string): Promise<HotspotDetail> {
-  const res = await fetch(`/api/hotspots/${h3Index}`);
-  if (!res.ok) {
-    const body = (await res.json()) as { error: { message: string } };
-    throw new Error(body.error.message);
-  }
-  return res.json();
+  return apiFetch(`/api/hotspots/${h3Index}`);
 }
 
 // AC-010-03/04: opens within 300ms (the shell renders immediately; data

@@ -14,6 +14,7 @@ import { cellToBoundary, isValidCell } from "h3-js";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { PredictionResponse } from "@cyberpulse/shared/zod/prediction";
 import { formatScorePercent } from "@/lib/formatters";
+import { RISK_COLORS } from "@/components/map/types";
 
 setWorkerUrl("/maplibre-gl-worker.mjs");
 
@@ -34,12 +35,6 @@ const EMPTY_STYLE: StyleSpecification = {
     },
   ],
 };
-
-const RISK_COLORS = {
-  HIGH: "#C0392B",
-  MEDIUM: "#C97A0E",
-  LOW: "#1F7A47",
-} as const;
 
 function webglAvailable(): boolean {
   try {

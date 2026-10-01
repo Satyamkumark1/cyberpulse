@@ -5,19 +5,9 @@ import { formatTimestampIst, formatPaise } from "@/lib/formatters";
 import { resolveRoleFromNextHeaders } from "@/services/lib/auth";
 import { list } from "@/services/alertService";
 import { ALERT_SEVERITIES, ALERT_STATUSES, type AlertSeverity, type AlertStatus } from "@cyberpulse/shared/enums";
+import { ALERT_STATUS_CLASS, BADGE_FALLBACK, SEVERITY_CLASS } from "@/components/common/badges";
 
 export const metadata = { title: "Alerts — CyberPulse AI" };
-
-const SEVERITY_CLASS: Record<string, string> = {
-  CRITICAL: "bg-red-100 text-red-700",
-  HIGH: "bg-orange-100 text-orange-700",
-  MEDIUM: "bg-yellow-100 text-yellow-700",
-  LOW: "bg-slate-100 text-slate-600",
-};
-const STATUS_CLASS: Record<string, string> = {
-  SENT: "bg-blue-100 text-blue-700",
-  ACKNOWLEDGED: "bg-green-100 text-green-700",
-};
 
 export default async function AlertsPage({
   searchParams,
@@ -130,12 +120,12 @@ export default async function AlertsPage({
                     </td>
                     <td className="px-4 py-3 text-slate-700">{a.locationName}</td>
                     <td className="px-4 py-3">
-                      <span className={`rounded px-2 py-0.5 text-xs font-medium ${SEVERITY_CLASS[a.severity] ?? "bg-slate-100 text-slate-600"}`}>
+                      <span className={`rounded px-2 py-0.5 text-xs font-medium ${SEVERITY_CLASS[a.severity] ?? BADGE_FALLBACK}`}>
                         {a.severity}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`rounded px-2 py-0.5 text-xs font-medium ${STATUS_CLASS[a.status] ?? "bg-slate-100 text-slate-600"}`}>
+                      <span className={`rounded px-2 py-0.5 text-xs font-medium ${ALERT_STATUS_CLASS[a.status] ?? BADGE_FALLBACK}`}>
                         {a.status}
                       </span>
                     </td>

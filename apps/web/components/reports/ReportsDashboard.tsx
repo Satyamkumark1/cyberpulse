@@ -6,6 +6,7 @@ import { FRAUD_TYPES } from "@cyberpulse/shared/enums";
 import { StatePanel } from "@/components/common/StatePanel";
 import { ReportChartsLazy } from "./ReportChartsLoader";
 import type { ReportSummary } from "./ReportCharts";
+import { apiFetch } from "@/lib/apiFetch";
 
 type Filters = { from: string; to: string; city: string; state: string; fraudType: string };
 interface Metrics { precision: number; recall: number; f1: number; rocAuc: number; top1HitRate: number; top3HitRate: number; top5HitRate: number; modelVersion: string; trainedAt: string; datasetSeed: number; nTrain: number; nTest: number; }
@@ -16,14 +17,10 @@ function queryString(filters: Filters) {
   return params.toString();
 }
 async function fetchSummary(filters: Filters): Promise<ReportSummary> {
-  const res = await fetch(`/api/reports/summary?${queryString(filters)}`);
-  if (!res.ok) throw new Error("Unable to load report data.");
-  return res.json();
+  return apiFetch(`/api/reports/summary?${queryString(filters)}`, undefined, "Unable to load report data.");
 }
 async function fetchMetrics(): Promise<Metrics | null> {
-  const res = await fetch("/api/reports/metrics");
-  if (!res.ok) throw new Error("Unable to load model metrics.");
-  return (await res.json()).data;
+  return (await apiFetch<{ data: Metrics | null }>("/api/reports/metrics", undefined, "Unable to load model metrics.")).data;
 }
 
 export function ReportsDashboard() {

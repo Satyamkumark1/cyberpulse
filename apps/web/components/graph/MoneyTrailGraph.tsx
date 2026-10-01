@@ -13,21 +13,13 @@ import { AtmNode } from "./nodes/AtmNode";
 import { NodeDetailPanel } from "./NodeDetailPanel";
 import { GraphAccessibleTable } from "./GraphAccessibleTable";
 import type { NetworkResponse } from "./types";
+import { apiFetch } from "@/lib/apiFetch";
 
 const NODE_TYPES = { VICTIM: VictimNode, MULE_ACCOUNT: MuleAccountNode, ATM: AtmNode };
 const GRAPH_HEIGHT_PX = 520;
 
-interface ApiErrorBody {
-  error: { message: string };
-}
-
 async function fetchNetwork(complaintId: string, maxNodes: number): Promise<NetworkResponse> {
-  const res = await fetch(`/api/transactions/network/${complaintId}?maxNodes=${maxNodes}`);
-  if (!res.ok) {
-    const body = (await res.json()) as ApiErrorBody;
-    throw new Error(body.error.message);
-  }
-  return res.json();
+  return apiFetch(`/api/transactions/network/${complaintId}?maxNodes=${maxNodes}`);
 }
 
 function prefersReducedMotion(): boolean {

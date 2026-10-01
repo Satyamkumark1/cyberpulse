@@ -3,14 +3,10 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { LocationResponse, PlaceLocation } from "@/lib/location";
+import { apiFetch } from "@/lib/apiFetch";
 
 export async function fetchLocations(params: URLSearchParams, signal?: AbortSignal): Promise<LocationResponse> {
-  const response = await fetch(`/api/locations?${params}`, { ...(signal ? { signal } : {}) });
-  if (!response.ok) {
-    const body = await response.json().catch(() => null);
-    throw new Error(body?.error?.message ?? "Location lookup unavailable. Retry.");
-  }
-  return response.json();
+  return apiFetch(`/api/locations?${params}`, signal ? { signal } : undefined, "Location lookup unavailable. Retry.");
 }
 
 export function LocationDetails({ latitude, longitude, place, predicted = false }: {

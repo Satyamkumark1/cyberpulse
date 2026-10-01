@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ApiError, apiFetch } from "@/lib/apiFetch";
 
 interface ResetCounts {
   alertsCleared: number;
@@ -14,29 +15,6 @@ function plural(count: number, noun: string): string {
 }
 
 const DEMO_HEADERS = { "x-cyberpulse-origin": "DEMO" } as const;
-
-/** Carries the API's closed error code so the UI can say *why*, not just that
- *  something failed. */
-class ApiError extends Error {
-  constructor(
-    readonly code: string,
-    message: string,
-  ) {
-    super(message);
-  }
-}
-
-async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init);
-  if (!res.ok) {
-    // The single error serialiser always returns `{ error: { code, message } }`
-    // from a closed code set. Collapsing that to "Request failed" is what made
-    // an ordinary 403 read as a broken server.
-    const body = (await res.json().catch(() => null)) as { error?: { code?: string; message?: string } } | null;
-    throw new ApiError(body?.error?.code ?? "UNKNOWN", body?.error?.message ?? "Request failed.");
-  }
-  return res.json();
-}
 
 /** Demo reset is an ADMIN capability; the role selector sits beside this
  *  control, so naming the required role is actionable rather than a dead end. */
@@ -56,7 +34,7 @@ export function DemoResetControl() {
 
   const preview = useQuery({
     queryKey: ["demo-reset-preview"],
-    queryFn: () => fetchJson<ResetCounts>("/api/demo/reset", { headers: DEMO_HEADERS }),
+    queryFn: () => apiFetch<ResetCounts>("/api/demo/reset", { headers: DEMO_HEADERS }),
     enabled: confirming,
     // Never retry a 4xx: a role that cannot reset will not gain the capability
     // on the second attempt, and the backoff only delays telling the user why
@@ -65,7 +43,7 @@ export function DemoResetControl() {
   });
 
   const mutation = useMutation({
-    mutationFn: () => fetchJson<ResetCounts>("/api/demo/reset", { method: "POST", headers: DEMO_HEADERS }),
+    mutationFn: () => apiFetch<ResetCounts>("/api/demo/reset", { method: "POST", headers: DEMO_HEADERS }),
     retry: false,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["alerts"] });

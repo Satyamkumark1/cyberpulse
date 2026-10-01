@@ -21,11 +21,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.engine.features import FEATURE_ORDER, build_feature_schema
 from app.engine.model import CalibratedRiskModel, TemporalModel
-from training.generate_training_data import build_dataset, database_url
+from app.engine.temporal import BIN_HOURS, NUM_BINS
+from training.generate_training_data import DATASET_SEED, build_dataset, database_url
 
-RANDOM_STATE: Final = 26184
-NUM_TEMPORAL_BINS: Final = 12
-TEMPORAL_BIN_HOURS: Final = 2
+RANDOM_STATE: Final = DATASET_SEED
 
 # Winner of the documented grid search (ai/model-selection.md §5), run by
 # training/search_hyperparams.py, scored by top-3 hit rate on the
@@ -63,15 +62,18 @@ TEMPORAL_MODEL_PARAMS: Final = {
 # `model.classes_` so no caller can mistake a class index for a bin number.
 
 
-def train_risk_model(train_df: pd.DataFrame, cal_df: pd.DataFrame) -> CalibratedRiskModel:
-    x_train, y_train = train_df[FEATURE_ORDER].to_numpy(), train_df["y"].to_numpy()
+def train_risk_model(
+    train_df: pd.DataFrame, cal_df: pd.DataFrame, feature_cols: list[str] = FEATURE_ORDER
+) -> CalibratedRiskModel:
+    """Also used by evaluate.py for baselines and ablations on reduced feature sets."""
+    x_train, y_train = train_df[feature_cols].to_numpy(), train_df["y"].to_numpy()
     neg, pos = int((y_train == 0).sum()), int((y_train == 1).sum())
     scale_pos_weight = neg / pos if pos else 1.0
 
     classifier = XGBClassifier(**RISK_MODEL_PARAMS, scale_pos_weight=scale_pos_weight)
     classifier.fit(x_train, y_train)
 
-    raw_cal_scores = classifier.predict_proba(cal_df[FEATURE_ORDER].to_numpy())[:, 1]
+    raw_cal_scores = classifier.predict_proba(cal_df[feature_cols].to_numpy())[:, 1]
     calibrator = IsotonicRegression(out_of_bounds="clip", y_min=0.0, y_max=1.0)
     calibrator.fit(raw_cal_scores, cal_df["y"].to_numpy())
 
@@ -79,7 +81,7 @@ def train_risk_model(train_df: pd.DataFrame, cal_df: pd.DataFrame) -> Calibrated
 
 
 def _temporal_bin(hours_to_withdrawal: float) -> int:
-    return int(np.clip(hours_to_withdrawal // TEMPORAL_BIN_HOURS, 0, NUM_TEMPORAL_BINS - 1))
+    return int(np.clip(hours_to_withdrawal // BIN_HOURS, 0, NUM_BINS - 1))
 
 
 def train_temporal_model(train_cal_df: pd.DataFrame) -> TemporalModel:

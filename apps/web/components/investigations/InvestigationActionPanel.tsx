@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ApiError, apiFetch, jsonInit } from "@/lib/apiFetch";
 
 interface Props {
   caseId: string;
@@ -47,28 +48,18 @@ export function InvestigationActionPanel({ caseId, currentStatus, currentUpdated
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/investigations/${encodeURIComponent(caseId)}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status: targetStatus,
-          expectedUpdatedAt: currentUpdatedAt,
-          note: note.trim() || undefined,
-        }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        const msg = (body as { error?: { message?: string } }).error?.message;
-        if (res.status === 409) {
-          setError("The record changed since you loaded this page. Please refresh and try again.");
-        } else {
-          setError(msg ?? "Failed to update investigation.");
-        }
-        return;
-      }
+      await apiFetch(
+        `/api/investigations/${encodeURIComponent(caseId)}`,
+        jsonInit("PATCH", { status: targetStatus, expectedUpdatedAt: currentUpdatedAt, note: note.trim() || undefined }),
+        "Failed to update investigation.",
+      );
       window.location.reload();
-    } catch {
-      setError("Network error — please try again.");
+    } catch (e) {
+      if (e instanceof ApiError && e.code === "CONFLICT") {
+        setError("The record changed since you loaded this page. Please refresh and try again.");
+      } else {
+        setError(e instanceof ApiError ? e.message : "Network error — please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -80,21 +71,12 @@ export function InvestigationActionPanel({ caseId, currentStatus, currentUpdated
     setNoteLoading(true);
     setNoteError(null);
     try {
-      const res = await fetch(`/api/investigations/${encodeURIComponent(caseId)}/notes`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: noteBody.trim() }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        setNoteError((body as { error?: { message?: string } }).error?.message ?? "Failed to add note.");
-        return;
-      }
+      await apiFetch(`/api/investigations/${encodeURIComponent(caseId)}/notes`, jsonInit("POST", { body: noteBody.trim() }), "Failed to add note.");
       setNoteBody("");
       setAddingNote(false);
       window.location.reload();
-    } catch {
-      setNoteError("Network error — please try again.");
+    } catch (e) {
+      setNoteError(e instanceof ApiError ? e.message : "Network error — please try again.");
     } finally {
       setNoteLoading(false);
     }

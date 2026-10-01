@@ -8,7 +8,8 @@ import { FRAUD_TYPES, type FraudType } from "@cyberpulse/shared/enums";
 import type { CitizenReportResponse } from "@cyberpulse/shared/citizen";
 import { COPY, withLang, type Lang } from "@/lib/safety/copy";
 import { saveLastReport } from "@/lib/safety/lastReport";
-import { CitizenApiError, submitReport } from "./citizenApi";
+import { submitReport } from "./citizenApi";
+import { ApiError } from "@/lib/apiFetch";
 
 type Step = 1 | 2 | 3;
 type Field = "fraudType" | "amount" | "city";
@@ -54,7 +55,7 @@ export function ReportNow({ lang, cities }: { lang: Lang; cities: readonly strin
       setStep(3);
     },
     onError: (error) => {
-      if (error instanceof CitizenApiError && error.code === "VALIDATION_ERROR" && error.field === "city") {
+      if (error instanceof ApiError && error.code === "VALIDATION_ERROR" && error.field === "city") {
         setErrors({ city: t.errors.city });
       }
     },
@@ -82,7 +83,7 @@ export function ReportNow({ lang, cities }: { lang: Lang; cities: readonly strin
   };
 
   const serverError =
-    mutation.error instanceof CitizenApiError && mutation.error.code === "RATE_LIMITED"
+    mutation.error instanceof ApiError && mutation.error.code === "RATE_LIMITED"
       ? t.errors.rateLimited
       : mutation.isError && !errors.city
         ? t.errors.generic

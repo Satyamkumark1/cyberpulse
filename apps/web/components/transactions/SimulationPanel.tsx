@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { StatePanel } from "@/components/common/StatePanel";
 import { formatPaise, formatTimestampIst } from "@/lib/formatters";
+import { apiFetch } from "@/lib/apiFetch";
 
 interface SimulationEvent {
   eventRef: string;
@@ -16,26 +17,16 @@ interface SimulationEventsResponse {
   events: SimulationEvent[];
 }
 
-interface ApiErrorBody {
-  error: { message: string };
-}
-
 const POLL_INTERVAL_MS = 3_000;
 const VISIBLE_ROW_CAP = 50;
 const EVENTS_QUERY_KEY = ["simulation-events"];
 
 async function postAction(action: "start" | "pause" | "reset"): Promise<void> {
-  const res = await fetch(`/api/simulation/${action}`, { method: "POST" });
-  if (!res.ok) {
-    const body = (await res.json()) as ApiErrorBody;
-    throw new Error(body.error.message);
-  }
+  await apiFetch(`/api/simulation/${action}`, { method: "POST" });
 }
 
 async function fetchEvents(): Promise<SimulationEventsResponse> {
-  const res = await fetch("/api/simulation/events");
-  if (!res.ok) throw new Error("Failed to load simulation events");
-  return res.json();
+  return apiFetch("/api/simulation/events", undefined, "Failed to load simulation events");
 }
 
 // FEAT-03 §Simulation panel, architecture/api-design.md API-023.

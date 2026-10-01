@@ -2,24 +2,12 @@
 
 import { useMutation } from "@tanstack/react-query";
 import type { PredictionResponse } from "@cyberpulse/shared/zod/prediction";
-
-interface ApiError {
-  error: { code: string; message: string };
-}
+import { apiFetch } from "@/lib/apiFetch";
 
 async function requestPrediction(complaintId: string, forceRefresh: boolean, headers?: HeadersInit): Promise<PredictionResponse> {
   const requestHeaders = new Headers(headers);
   requestHeaders.set("content-type", "application/json");
-  const res = await fetch("/api/predict", {
-    method: "POST",
-    headers: requestHeaders,
-    body: JSON.stringify({ complaintId, forceRefresh }),
-  });
-  if (!res.ok) {
-    const body = (await res.json()) as ApiError;
-    throw new Error(body.error.message);
-  }
-  return res.json();
+  return apiFetch("/api/predict", { method: "POST", headers: requestHeaders, body: JSON.stringify({ complaintId, forceRefresh }) });
 }
 
 /**
