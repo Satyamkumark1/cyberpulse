@@ -168,7 +168,7 @@
 
 ## Scam Shield (FEAT-17) — TC-SAFE-030 … 039
 
-Phone viewport (Pixel 7). `tests/safety/safety.spec.ts`, `playwright.safety.config.ts`. TC-SAFE-033 needs the ML service; every row the suite writes is `DEMO`-origin and the suite ends with a demo reset.
+Phone viewport (Pixel 7). `tests/safety/safety.spec.ts`, the `safety` project in `playwright.config.ts` (`pnpm --filter web test:safety`). TC-SAFE-033 needs the ML service; every row the suite writes is `DEMO`-origin and the suite ends with a demo reset.
 
 | ID | Case | Req | Priority |
 |---|---|---|---|

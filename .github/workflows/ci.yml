@@ -104,7 +104,7 @@ jobs:
       - run: pnpm audit --audit-level=high
       - uses: actions/setup-python@v5
         with: { python-version: "${{ env.PYTHON_VERSION }}" }
-      - run: pip install pip-audit && pip-audit -r apps/ml-service/requirements.txt
+      - run: pip install pip-audit && pip-audit -r apps/ml-service/training/requirements.txt -r scripts/requirements.txt
       - run: bash scripts/evaluation/no_hardcode_check.sh
       - name: secret scan (gitleaks)
         uses: gitleaks/gitleaks-action@v2

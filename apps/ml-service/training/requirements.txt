@@ -4,3 +4,4 @@
 # "The ML boundary" — no DB credentials in the serving process, ever).
 -r ../requirements.txt
 psycopg[binary]==3.2.5
+h3==4.5.0  # candidate-cell generation; the served app never indexes cells

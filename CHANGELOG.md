@@ -31,6 +31,14 @@ The committed artefacts were trained before `generate_training_data.py` stopped 
 
 Baselines on top-3 hit rate: historical frequency 0.8785 and logistic regression 0.8692 both exceed XGBoost's 0.8411. Shuffled-label ablation 0.1215 against random 0.0633.
 
+### Fixed — setup and test tooling that did not run
+
+- `pnpm test:e2e` had no config; the four near-identical `playwright.*.config.ts` are now one `playwright.config.ts` with `map`, `demo`, `roles` and `safety` projects (`test:safety` added; `E2E_BASE_URL` replaces the per-suite variables). 36 tests in 6 files.
+- `make setup` builds the two Python venvs (scripts, ML service), runs every Python step with the right one, takes `DATABASE_URL` from `apps/web/.env.local`, and always trains and evaluates (the "Phase 3 not yet built" branch is gone). README setup writes local values to that file; `.env.example` stays the deployment list.
+- `apps/ml-service/ruff.toml` anchors first-party imports, so ruff reports the same from the repo root (CI, `make lint`) as from the service folder.
+- Dependencies: `h3` moved to training requirements (the served app never indexes cells; `pandas`/`scipy` stay, `shap` needs them); `pytest-asyncio` and `@testing-library/react` removed (unused); `pip-audit` now covers training and scripts requirements; `@cyberpulse/config` loses a `main` pointing at no file and the unused Prettier preset.
+- `devops/infrastructure.md`: one worker on Render's free tier, CI uses a Postgres service container (no Neon branch per PR).
+
 ### Changed — one copy of each duplicated helper
 
 - `lib/apiFetch.ts` (`apiFetch`, `ApiError`, `jsonInit`) is the single client-side reader of the error envelope, typed from `@cyberpulse/shared/zod/error`. It replaces 16 hand-rolled `fetch` + error-parsing blocks and the separate `CitizenApiError`; citizen pages still render by code, never server text (ADR-020). `RoleSwitcher` keeps its own fire-and-forget call.

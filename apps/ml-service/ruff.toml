@@ -1,0 +1,3 @@
+# Anchors first-party detection (app, training) to this folder, so ruff
+# reports the same thing from the repo root (CI, make lint) as from here.
+src = ["."]

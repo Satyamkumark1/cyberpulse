@@ -42,6 +42,6 @@ pnpm --filter web test:unit
 pnpm --filter web test:map
 ```
 
-Set `MAP_TEST_BASE_URL` when the running app is not on port 3000. The map suite mocks geographic and hotspot responses and external tiles. It checks deep links, PIN detail, map/table switching, coordinate validation, lookup failure, missing WebGL, mobile navigation, and failed-basemap fallback. Artifacts are written to `/tmp/cyberpulse-map-test-results`.
+Set `E2E_BASE_URL` when the running app is not on port 3000. The map suite mocks geographic and hotspot responses and external tiles. It checks deep links, PIN detail, map/table switching, coordinate validation, lookup failure, missing WebGL, mobile navigation, and failed-basemap fallback. Artifacts are written to `/tmp/cyberpulse-e2e-results`.
 
 Implementation validation also exercised actual OpenFreeMap street rendering, a Chennai coordinate reverse lookup, PIN search for Noida, and the dashboard integration in Chromium. Desktop (1440px) and mobile (390px) map pages had no detected WCAG A/AA violations in axe; this automated check does not replace a full manual accessibility audit.

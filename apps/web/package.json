@@ -12,9 +12,10 @@
     "test:unit": "vitest run",
     "test:int": "vitest run --config vitest.integration.config.ts",
     "test:e2e": "playwright test",
-    "test:map": "playwright test --config playwright.map.config.ts",
-    "test:demo": "playwright test --config playwright.demo.config.ts",
-    "test:roles": "playwright test --config playwright.roles.config.ts"
+    "test:map": "playwright test --project map",
+    "test:demo": "playwright test --project demo",
+    "test:roles": "playwright test --project roles",
+    "test:safety": "playwright test --project safety"
   },
   "dependencies": {
     "@cyberpulse/db": "workspace:*",
@@ -35,7 +36,6 @@
     "@cyberpulse/config": "workspace:*",
     "@eslint/eslintrc": "^3.1.0",
     "@playwright/test": "^1.63.0",
-    "@testing-library/react": "^16.0.1",
     "@types/node": "^22.7.5",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

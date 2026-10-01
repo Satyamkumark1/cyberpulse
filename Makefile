@@ -1,13 +1,27 @@
-.PHONY: setup dev verify up down migrate generate signal-check pii-scan seed train evaluate lint typecheck test-unit test-int clean
+.PHONY: setup dev verify up down migrate generate signal-check pii-scan seed train evaluate lint typecheck test-unit test-int clean venvs
+
+# The app's own env file supplies DATABASE_URL to migrate/seed/train/evaluate.
+-include apps/web/.env.local
+export DATABASE_URL
+
+# Two venvs because their pins differ: scripts/ (data generation and gates)
+# and the ML service (serving + training + dev tools).
+ML_PY := apps/ml-service/.venv/bin/python
+SCRIPTS_PY := scripts/.venv/bin/python
 
 # README.md §Setup, architecture/deployment-architecture.md §3.1.
 # Clean clone -> running, seeded stack in <= 30 min (NFR-17, TC-DOC-001).
-setup: up migrate generate signal-check pii-scan seed
-	@if [ -f apps/ml-service/training/train.py ]; then \
-		$(MAKE) train evaluate; \
-	else \
-		echo "training/evaluate.py not yet built (Phase 3) — stack is up, seeded, and ready to develop against."; \
-	fi
+setup: venvs up migrate generate signal-check pii-scan seed train evaluate
+
+venvs: $(ML_PY) $(SCRIPTS_PY)
+
+$(ML_PY):
+	python3.11 -m venv apps/ml-service/.venv
+	$(ML_PY) -m pip install -q -r apps/ml-service/training/requirements.txt -r apps/ml-service/requirements-dev.txt
+
+$(SCRIPTS_PY):
+	python3.11 -m venv scripts/.venv
+	$(SCRIPTS_PY) -m pip install -q -r scripts/requirements.txt
 
 dev:
 	docker compose up -d postgres ml-service
@@ -31,34 +45,34 @@ migrate:
 	pnpm --filter @cyberpulse/db run migrate
 
 generate:
-	pnpm run generate:data
+	$(SCRIPTS_PY) scripts/generate-data/generator.py
 
 signal-check:
-	pnpm run signal:check
+	$(SCRIPTS_PY) scripts/evaluation/signal_check.py
 
 pii-scan:
-	pnpm run pii:scan
+	$(SCRIPTS_PY) scripts/evaluation/pii_scan.py
 
 seed:
 	pnpm --filter @cyberpulse/db run seed
 
 train:
-	python3 apps/ml-service/training/train.py
+	$(ML_PY) apps/ml-service/training/train.py
 
 evaluate:
-	python3 apps/ml-service/training/evaluate.py
+	$(ML_PY) apps/ml-service/training/evaluate.py
 
 lint:
 	pnpm run lint
-	cd apps/ml-service && ruff check .
+	$(ML_PY) -m ruff check apps/ml-service
 
 typecheck:
 	pnpm run typecheck
-	cd apps/ml-service && mypy app
+	cd apps/ml-service && .venv/bin/python -m mypy app
 
 test-unit:
 	pnpm --filter web run test:unit
-	cd apps/ml-service && pytest -m unit -q
+	cd apps/ml-service && .venv/bin/python -m pytest -m unit -q
 
 test-int:
 	pnpm --filter web run test:int

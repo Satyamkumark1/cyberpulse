@@ -61,7 +61,7 @@ The function timeout sitting above the ML client timeout means an ML timeout sur
 |---|---|
 | Runtime | Python 3.11 in a container |
 | Resources | 512 MB, 0.5 vCPU (free); 1 GB, 1 vCPU recommended |
-| Workers | 2 uvicorn workers, 1 thread each |
+| Workers | 1 uvicorn worker on the free tier (`render.yaml`; the free 512 MB fits one process); `docker/Dockerfile.ml` defaults to 2 for larger instances |
 | Artefacts | Baked into the image, mounted read-only |
 | Health | `GET /health`, 15 s interval, 20 s start period |
 | Networking | Origin allow-listed to the web deployment; not publicly routable |
@@ -81,7 +81,7 @@ The free tier spins down after ~15 minutes idle; a cold start costs 5–20 secon
 |---|---|
 | Engine | PostgreSQL 16 (Neon serverless) |
 | Connection | Pooled endpoint, `sslmode=require` |
-| Branching | One branch per PR, destroyed on merge |
+| Branching | Not automated: CI tests against a `postgres:16` service container; production is the Neon `cyberpulse` project's main branch |
 | Extensions | None required; PostGIS optional and never assumed (ASM-07) |
 | Backup | Point-in-time restore within the tier's retention |
 | Scaling | Vertical; partitioning and replicas documented at 10× (`architecture/scalability.md`) |
@@ -160,6 +160,6 @@ Each row names the observable symptom rather than only the limit, because during
 
 ## 11. Infrastructure as Code
 
-The estate is small enough that provisioning is documented rather than automated: `docker-compose.yml` for local, `render.yaml` for the ML service, Vercel project settings in the dashboard, Neon branches created by CI through the API.
+The estate is small enough that provisioning is documented rather than automated: `docker-compose.yml` for local, `render.yaml` for the ML service, Vercel project settings in the dashboard (root `apps/web`), and the Neon project created by hand.
 
 Terraform for three managed services would be more code to maintain than the services it describes. At 10× — multiple replicas, partitioned database, multiple environments — that trade reverses, and the recommendation changes with it.

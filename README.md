@@ -99,13 +99,25 @@ Six independent controls enforce it, and 24 test cases prove it — including on
 
 ## Setup
 
+Needs Docker, Node 20 + pnpm, and Python 3.11.
+
 ```bash
 git clone <repo> && cd cyberpulse-ai
-cp .env.example .env
-make setup      # compose up · migrate · generate · signal_check · pii_scan
-                # · seed · train · evaluate
-make dev        # web on :3000, ML service on :8000
+pnpm install
+cat > apps/web/.env.local <<'EOF'
+DATABASE_URL=postgres://cyberpulse:cyberpulse@localhost:5432/cyberpulse
+ML_SERVICE_URL=http://localhost:8000
+NEXT_PUBLIC_MAP_TILE_URL=https://tiles.openfreemap.org/styles/liberty
+LOCATION_SERVICE_URL=https://photon.komoot.io
+EOF
+make setup      # venvs · compose up · migrate · generate · signal_check
+                # · pii_scan · seed · train · evaluate
+make dev        # Postgres + ML in Docker, web on :3000
 ```
+
+`apps/web/.env.local` is the one local env file: the web app reads it and the Makefile takes `DATABASE_URL` from it. `.env.example` lists the variables for deployment (Vercel), not local values. If another Postgres already listens on 5432 (e.g. Homebrew), stop it first — `localhost:5432` would reach it instead of the container.
+
+Deployment: ML service on Render from `render.yaml`, web app on Vercel (root `apps/web`), database on Neon — `devops/infrastructure.md`.
 
 Target: clean clone to a live prediction in **under 30 minutes** (NFR-17, timed by TC-DOC-001).
 
