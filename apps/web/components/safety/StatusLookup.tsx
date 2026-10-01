@@ -1,9 +1,10 @@
 "use client"; // mutation with in-flight state: the lookup posts the tracking code in a body, never a URL
 
-import { type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { formatTimestampIst } from "@/lib/formatters";
 import { COPY, type Lang } from "@/lib/safety/copy";
+import { loadLastReport, type LastReport } from "@/lib/safety/lastReport";
 import { CitizenApiError, fetchStatus } from "./citizenApi";
 import { StatusTimeline } from "./StatusTimeline";
 
@@ -12,6 +13,18 @@ import { StatusTimeline } from "./StatusTimeline";
 export function StatusLookup({ lang, initialComplaintId }: { lang: Lang; initialComplaintId: string | null }) {
   const t = COPY[lang].status;
   const mutation = useMutation({ mutationFn: fetchStatus, retry: false });
+  const idRef = useRef<HTMLInputElement>(null);
+  const codeRef = useRef<HTMLInputElement>(null);
+  // Browser API: session storage exists only after mount, never on the server.
+  const [last, setLast] = useState<LastReport | null>(null);
+  useEffect(() => setLast(loadLastReport()), []);
+
+  const fillLastReport = () => {
+    if (!last) return;
+    if (idRef.current) idRef.current.value = last.complaintId;
+    if (codeRef.current) codeRef.current.value = last.trackingCode;
+    mutation.mutate(last);
+  };
 
   const onSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -45,6 +58,7 @@ export function StatusLookup({ lang, initialComplaintId }: { lang: Lang; initial
           </p>
           <input
             id="status-complaintId"
+            ref={idRef}
             name="complaintId"
             defaultValue={initialComplaintId ?? ""}
             aria-describedby="status-complaintId-hint"
@@ -62,6 +76,7 @@ export function StatusLookup({ lang, initialComplaintId }: { lang: Lang; initial
           </p>
           <input
             id="status-trackingCode"
+            ref={codeRef}
             name="trackingCode"
             aria-describedby="status-trackingCode-hint"
             autoComplete="off"
@@ -76,6 +91,16 @@ export function StatusLookup({ lang, initialComplaintId }: { lang: Lang; initial
         >
           {mutation.isPending ? t.submitting : t.submit}
         </button>
+        {last ? (
+          <button
+            type="button"
+            onClick={fillLastReport}
+            disabled={mutation.isPending}
+            className="ml-3 min-h-11 rounded-md border border-sih-blue-600 px-4 py-2 text-sm font-semibold text-sih-blue-600 hover:bg-slate-50 disabled:opacity-60"
+          >
+            {t.useLast}: <span className="font-mono">{last.complaintId}</span>
+          </button>
+        ) : null}
       </form>
 
       <section aria-labelledby="status-progress-heading" className="space-y-4">

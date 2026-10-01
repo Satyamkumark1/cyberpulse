@@ -184,3 +184,20 @@ test("TC-SAFE-039: a CITIZEN role cookie on the officer dashboard shows the gate
   await expect(page.getByText("This workspace is for officers")).toBeVisible();
   await expect(page.getByRole("link", { name: "Open Scam Shield" })).toBeVisible();
 });
+
+test("the report just filed in this tab can be tracked in one click", async ({ page }) => {
+  const filed = await fileReport(page);
+  await page.goto("/safety/status");
+
+  const status = page.waitForResponse((r) => r.url().includes("/api/citizen/") && r.request().method() === "POST" && !r.url().endsWith("/reports"));
+  await page.getByRole("button", { name: `Use the report you just filed: ${filed.complaintId}` }).click();
+
+  expect((await status).ok()).toBe(true);
+  await expect(page.getByLabel("Complaint ID")).toHaveValue(filed.complaintId);
+  await expect(page.getByLabel("Tracking code")).toHaveValue(filed.trackingCode);
+});
+
+test("no one-click tracking button appears before a report is filed in this tab", async ({ page }) => {
+  await page.goto("/safety/status");
+  await expect(page.getByRole("button", { name: /Use the report you just filed/ })).toHaveCount(0);
+});

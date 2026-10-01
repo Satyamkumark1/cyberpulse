@@ -78,3 +78,12 @@ test("/guard renders a real duty-post table for GUARD, composed from the live pr
   // a fixed constant.
   await expect(page.getByText(data[0]!.name, { exact: false }).first()).toBeVisible();
 });
+
+test("choosing CITIZEN in the role switcher opens the citizen pages", async ({ page, context, baseURL }) => {
+  await context.addCookies([{ name: "cyberpulse_role", value: "LEA", url: baseURL! }]);
+  await page.goto("/dashboard");
+
+  await page.getByLabel("Prototype role").selectOption("CITIZEN");
+
+  await expect(page).toHaveURL(/\/safety$/);
+});

@@ -7,6 +7,7 @@ import { CITIZEN_AMOUNT_MAX_PAISE, CITIZEN_AMOUNT_MIN_PAISE } from "@cyberpulse/
 import { FRAUD_TYPES, type FraudType } from "@cyberpulse/shared/enums";
 import type { CitizenReportResponse } from "@cyberpulse/shared/citizen";
 import { COPY, withLang, type Lang } from "@/lib/safety/copy";
+import { saveLastReport } from "@/lib/safety/lastReport";
 import { CitizenApiError, submitReport } from "./citizenApi";
 
 type Step = 1 | 2 | 3;
@@ -48,6 +49,7 @@ export function ReportNow({ lang, cities }: { lang: Lang; cities: readonly strin
     mutationFn: submitReport,
     retry: false,
     onSuccess: (data) => {
+      saveLastReport({ complaintId: data.complaintId, trackingCode: data.trackingCode });
       setResult(data);
       setStep(3);
     },

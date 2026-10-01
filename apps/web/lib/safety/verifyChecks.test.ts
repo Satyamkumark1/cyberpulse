@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkCaller, checkLink, checkUpi } from "./verifyChecks";
+import { VERIFY_EXAMPLES, checkCaller, checkLink, checkUpi } from "./verifyChecks";
 
 describe("checkLink — TC-SAFE-003", () => {
   it.each([
@@ -61,5 +61,14 @@ describe("checkUpi — TC-SAFE-005", () => {
     ["a@b@c", "WARNING", "INVALID"],
   ] as const)("%s → %s %s", (input, level, reason) => {
     expect(checkUpi(input)).toEqual({ level, reason });
+  });
+});
+
+describe("VERIFY_EXAMPLES", () => {
+  it("covers each verdict once per check, in PASS → CAUTION → WARNING order where the check has one", () => {
+    expect(VERIFY_EXAMPLES.link.map((v) => checkLink(v)?.level)).toEqual(["PASS", "CAUTION", "WARNING"]);
+    expect(VERIFY_EXAMPLES.caller.map((v) => checkCaller(v)?.level)).toEqual(["PASS", "CAUTION", "WARNING"]);
+    // UPI has no CAUTION verdict: validated broker, validated fund, not validated.
+    expect(VERIFY_EXAMPLES.upi.map((v) => checkUpi(v)?.reason)).toEqual(["VALIDATED_BROKER", "VALIDATED_FUND", "NOT_VALIDATED"]);
   });
 });

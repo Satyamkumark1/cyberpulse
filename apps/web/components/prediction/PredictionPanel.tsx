@@ -7,6 +7,7 @@ import { RiskBadge } from "@/components/common/RiskBadge";
 import { StatePanel } from "@/components/common/StatePanel";
 import { AlertModal } from "@/components/alerts/AlertModal";
 import { formatPaise, formatScorePercent, formatWindowIst } from "@/lib/formatters";
+import { HotspotMapLazy } from "./HotspotMapLoader";
 import { usePrediction } from "./usePrediction";
 
 interface PredictionPanelProps {
@@ -81,56 +82,150 @@ export function PredictionPanel({ complaintId, initialPrediction }: PredictionPa
 // "explanation" as separate steps from the same single prediction response,
 // rather than issuing a second request for a narrower view (AC-P7-03: step 3
 // issues exactly one real POST /api/predict).
-export function PredictionSummary({ prediction }: { prediction: PredictionResponse }) {
+export function PredictionSummary({
+  prediction,
+  showMap = true,
+}: {
+  prediction: PredictionResponse;
+  showMap?: boolean;
+}) {
+  const [selectedH3, setSelectedH3] = useState<string | null>(
+    prediction.predictedLocation.h3Index
+  );
+
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <RiskBadge level={prediction.riskLevel} />
-        <span className="text-2xl font-semibold text-slate-800">{formatScorePercent(prediction.riskScore)}</span>
-        <span className="text-sm text-slate-500">confidence: {prediction.confidence}</span>
+    <div className="space-y-5">
+      {/* ── Top Metric Overview ── */}
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-slate-200 bg-slate-50/70 p-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <RiskBadge level={prediction.riskLevel} />
+          <span className="text-2xl font-bold tracking-tight text-slate-800">
+            {formatScorePercent(prediction.riskScore)}
+          </span>
+          <span className="rounded-full bg-slate-200/80 px-2 py-0.5 text-xs font-medium text-slate-700">
+            confidence: {prediction.confidence}
+          </span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-6 text-sm">
+          <div>
+            <span className="block text-[11px] font-medium uppercase tracking-wider text-slate-400">
+              Estimated exposure
+            </span>
+            <span className="font-semibold text-slate-800">
+              {formatPaise(prediction.estimatedExposurePaise)}
+            </span>
+          </div>
+
+          <div>
+            <span className="block text-[11px] font-medium uppercase tracking-wider text-slate-400">
+              Withdrawal window
+            </span>
+            <span className="font-semibold text-slate-800">
+              {formatWindowIst(prediction.expectedWindow.start, prediction.expectedWindow.end)}
+            </span>
+          </div>
+        </div>
       </div>
 
-      <div>
-        <h3 className="text-sm font-semibold text-slate-700">Predicted hotspot</h3>
-        <p className="text-sm text-slate-600">
-          {prediction.predictedLocation.name}, {prediction.predictedLocation.district}, {prediction.predictedLocation.state}
-        </p>
-        <p className="font-mono text-xs text-slate-400">{prediction.predictedLocation.h3Index}</p>
-      </div>
-
-      <div>
-        <h3 className="text-sm font-semibold text-slate-700">Expected withdrawal window</h3>
-        <p className="text-sm text-slate-600">{formatWindowIst(prediction.expectedWindow.start, prediction.expectedWindow.end)}</p>
-        <p className="text-xs text-slate-500">
-          Predicted window based on temporal patterns in related transactions and withdrawals.
-        </p>
-        {prediction.expectedWindow.fallback ? (
-          <p className="text-xs text-amber-700">Window widened — low confidence in the exact bin.</p>
-        ) : null}
-      </div>
-
-      <div>
-        <h3 className="text-sm font-semibold text-slate-700">Estimated exposure</h3>
-        <p className="text-sm text-slate-600">{formatPaise(prediction.estimatedExposurePaise)}</p>
-      </div>
-
-      <div>
-        <h3 className="text-sm font-semibold text-slate-700">Ranked hotspots</h3>
-        <ol className="mt-1 space-y-1 text-sm text-slate-600">
-          {prediction.rankedHotspots.map((h) => (
-            <li key={h.h3Index} className="flex items-start justify-between gap-2">
-              <span>
-                <span className="block">
-                  {h.rank}. {h.name}
-                </span>
-                <span className="block font-mono text-xs text-slate-400">
-                  {h.h3Index} · {h.lat.toFixed(5)}, {h.lon.toFixed(5)}
-                </span>
+      {/* ── Main Hotspot Grid: Details & Map ── */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+        {/* Left Column (5 cols): Hotspot info & Ranked List */}
+        <div className="space-y-4 lg:col-span-5">
+          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-xs">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Predicted Hotspot
+              </h3>
+              <span className="rounded bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                Primary
               </span>
-              <span className="shrink-0 font-mono text-xs text-slate-400">{formatScorePercent(h.score)}</span>
-            </li>
-          ))}
-        </ol>
+            </div>
+            <p className="mt-1 text-base font-semibold text-slate-800">
+              {prediction.predictedLocation.name}
+            </p>
+            <p className="text-xs text-slate-600">
+              {prediction.predictedLocation.district}, {prediction.predictedLocation.state}
+            </p>
+            <p className="mt-1 font-mono text-xs text-slate-400">
+              {prediction.predictedLocation.h3Index}
+            </p>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between pb-1.5">
+              <h3 className="text-sm font-semibold text-slate-700">Ranked hotspots</h3>
+              <span className="text-[11px] text-slate-400">Select to focus map</span>
+            </div>
+            <ol className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white shadow-xs">
+              {prediction.rankedHotspots.map((h) => {
+                const isSelected = (selectedH3 ?? prediction.predictedLocation.h3Index) === h.h3Index;
+                return (
+                  <li
+                    key={h.h3Index}
+                    onClick={() => setSelectedH3(h.h3Index)}
+                    className={`flex cursor-pointer items-start justify-between gap-2 p-3 transition-colors ${
+                      isSelected
+                        ? "border-l-4 border-blue-600 bg-blue-50/60"
+                        : "hover:bg-slate-50"
+                    }`}
+                  >
+                    <span>
+                      <span className="flex items-center gap-1.5 text-sm font-medium text-slate-800">
+                        <span
+                          className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold ${
+                            isSelected
+                              ? "bg-blue-600 text-white"
+                              : "bg-slate-200 text-slate-700"
+                          }`}
+                        >
+                          {h.rank}
+                        </span>
+                        {h.name}
+                      </span>
+                      <span className="block pl-6 font-mono text-xs text-slate-400">
+                        {h.h3Index} · {h.lat.toFixed(5)}, {h.lon.toFixed(5)}
+                      </span>
+                    </span>
+                    <div className="text-right">
+                      <span className="font-mono text-xs font-semibold text-slate-700">
+                        {formatScorePercent(h.score)}
+                      </span>
+                      <span className="block text-[10px] text-slate-400">
+                        {h.likelyAtms} ATMs
+                      </span>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold text-slate-700">Expected withdrawal window</h3>
+            <p className="text-sm text-slate-600">
+              {formatWindowIst(prediction.expectedWindow.start, prediction.expectedWindow.end)}
+            </p>
+            <p className="text-xs text-slate-500">
+              Predicted window based on temporal patterns in related transactions and withdrawals.
+            </p>
+            {prediction.expectedWindow.fallback ? (
+              <p className="mt-1 text-xs text-amber-700">Window widened — low confidence in the exact bin.</p>
+            ) : null}
+          </div>
+        </div>
+
+        {/* Right Column (7 cols): Interactive Hotspot Map */}
+        {showMap && (
+          <div className="lg:col-span-7">
+            <HotspotMapLazy
+              prediction={prediction}
+              selectedH3={selectedH3}
+              onSelectHotspot={(h3) => setSelectedH3(h3)}
+              heightPx={460}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

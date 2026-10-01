@@ -102,3 +102,13 @@ export function checkUpi(raw: string): CheckResult<UpiReason> | null {
   if (user!.endsWith(".mf")) return { level: "PASS", reason: "VALIDATED_FUND" };
   return { level: "PASS", reason: "VALIDATED" };
 }
+
+// One-click examples for demos, one per verdict. Links use real domains (a
+// bank's bank.in site, a real shortener) plus a lookalike built the way scam
+// SMS links are. Phone numbers and UPI user names are fictional; the UPI
+// handles follow SEBI's @valid<bank> format. verifyChecks.test.ts pins each verdict.
+export const VERIFY_EXAMPLES = {
+  link: ["https://sbi.bank.in", "https://bit.ly/3xYz9Ab", "http://sbi-kyc-update.co/verify"],
+  caller: ["1600 123 456", "140 1234567", "+91 90000 00000"],
+  upi: ["demobroker.brk@validhdfc", "demofund.mf@validicici", "quickreturns@ybl"],
+} as const;

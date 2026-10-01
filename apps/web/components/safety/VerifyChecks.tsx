@@ -2,7 +2,7 @@
 
 import { useId, useState, type FormEvent } from "react";
 import { COPY, type Lang } from "@/lib/safety/copy";
-import { checkCaller, checkLink, checkUpi, type CheckLevel, type CheckResult } from "@/lib/safety/verifyChecks";
+import { VERIFY_EXAMPLES, checkCaller, checkLink, checkUpi, type CheckLevel, type CheckResult } from "@/lib/safety/verifyChecks";
 
 const LEVEL_STYLE: Record<CheckLevel, { box: string; text: string; icon: string }> = {
   PASS: { box: "border-emerald-200 bg-emerald-50", text: "text-emerald-800", icon: "▼" },
@@ -18,9 +18,10 @@ interface CheckFormProps<R extends string> {
   inputMode: "url" | "tel" | "email";
   check: (value: string) => CheckResult<R> | null;
   reasons: Record<R, string>;
+  examples: readonly string[];
 }
 
-function CheckForm<R extends string>({ lang, label, hint, button, inputMode, check, reasons }: CheckFormProps<R>) {
+function CheckForm<R extends string>({ lang, label, hint, button, inputMode, check, reasons, examples }: CheckFormProps<R>) {
   const id = useId();
   const [value, setValue] = useState("");
   // The value the result was computed for. Editing the field hides the old
@@ -60,6 +61,22 @@ function CheckForm<R extends string>({ lang, label, hint, button, inputMode, che
           {button}
         </button>
       </div>
+      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+        <span>{t.examples}</span>
+        {examples.map((example) => (
+          <button
+            key={example}
+            type="button"
+            onClick={() => {
+              setValue(example);
+              setChecked(example);
+            }}
+            className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-mono text-slate-700 hover:border-sih-blue-600 hover:text-sih-blue-600"
+          >
+            {example}
+          </button>
+        ))}
+      </div>
       <div role="status" aria-live="polite">
         {result ? (
           <div className={`flex items-start gap-2 rounded-md border p-3 text-sm ${LEVEL_STYLE[result.level].box}`}>
@@ -83,9 +100,9 @@ export function VerifyChecks({ lang }: { lang: Lang }) {
   return (
     <div className="space-y-4">
       <p className="text-sm text-slate-600">{t.privacy}</p>
-      <CheckForm lang={lang} {...t.link} inputMode="url" check={checkLink} reasons={t.linkReason} />
-      <CheckForm lang={lang} {...t.caller} inputMode="tel" check={checkCaller} reasons={t.callerReason} />
-      <CheckForm lang={lang} {...t.upi} inputMode="email" check={checkUpi} reasons={t.upiReason} />
+      <CheckForm lang={lang} {...t.link} inputMode="url" check={checkLink} reasons={t.linkReason} examples={VERIFY_EXAMPLES.link} />
+      <CheckForm lang={lang} {...t.caller} inputMode="tel" check={checkCaller} reasons={t.callerReason} examples={VERIFY_EXAMPLES.caller} />
+      <CheckForm lang={lang} {...t.upi} inputMode="email" check={checkUpi} reasons={t.upiReason} examples={VERIFY_EXAMPLES.upi} />
 
       <section aria-labelledby="verify-report-heading" className="rounded-lg border border-slate-200 bg-white p-4 text-sm">
         <h2 id="verify-report-heading" className="font-semibold text-slate-800">

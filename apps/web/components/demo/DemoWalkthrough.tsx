@@ -9,6 +9,7 @@ import { StatePanel } from "@/components/common/StatePanel";
 import { RiskBadge } from "@/components/common/RiskBadge";
 import { AlertModal } from "@/components/alerts/AlertModal";
 import { PredictionFactors, PredictionSummary } from "@/components/prediction/PredictionPanel";
+import { HotspotMapLazy } from "@/components/prediction/HotspotMapLoader";
 import { usePrediction } from "@/components/prediction/usePrediction";
 import { ANALYSIS_STEP, nextAutoStep } from "@/components/demo/autoAdvance";
 import { formatPaise, formatScorePercent, formatTimestampIst, formatWindowIst } from "@/lib/formatters";
@@ -451,48 +452,104 @@ function AnalysisListStep({ rows }: { rows: DemoRow[] }) {
 }
 
 function HotspotListStep({ rows }: { rows: DemoRow[] }) {
+  const [selectedId, setSelectedId] = useState<string>(() => {
+    return rows.find((r) => r.prediction.data)?.complaintId ?? rows[0]?.complaintId ?? "";
+  });
+
+  const activeRow =
+    rows.find((r) => r.complaintId === selectedId && r.prediction.data) ??
+    rows.find((r) => r.prediction.data);
+
   return (
-    <section className="overflow-hidden rounded-md border border-slate-200 bg-white" aria-labelledby="hotspot-demo-heading">
+    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm" aria-labelledby="hotspot-demo-heading">
       <div className="border-b border-slate-200 p-5">
         <h2 id="hotspot-demo-heading" className="text-lg font-semibold tracking-tight text-navy-900">Hotspot prediction</h2>
-        <p className="mt-1 text-sm text-slate-600">Each row is this run&apos;s own predicted cash-out location, risk and window.</p>
+        <p className="mt-1 text-sm text-slate-600">
+          Each row is this run&apos;s own predicted cash-out location, risk and window. Select any complaint row to inspect its geographic hotspot map.
+        </p>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
-            <tr>
-              <th scope="col" className="px-4 py-2">Complaint</th>
-              <th scope="col" className="px-4 py-2">Risk</th>
-              <th scope="col" className="px-4 py-2">Predicted hotspot</th>
-              <th scope="col" className="px-4 py-2">Expected window</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {rows.map((row) => (
-              <tr key={row.complaintId}>
-                <td className="px-4 py-2 font-mono text-slate-800">{row.complaintId}</td>
-                <td className="px-4 py-2">
-                  {row.prediction.data ? (
-                    <div className="flex items-center gap-2">
-                      <RiskBadge level={row.prediction.data.riskLevel} />
-                      <span className="font-mono text-xs text-slate-700">{formatScorePercent(row.prediction.data.riskScore)}</span>
-                    </div>
-                  ) : row.prediction.isError ? (
-                    <span className="text-xs text-red-700">Unavailable</span>
-                  ) : (
-                    <span className="text-xs text-slate-500">Pending</span>
-                  )}
-                </td>
-                <td className="px-4 py-2 text-slate-700">
-                  {row.prediction.data ? `${row.prediction.data.predictedLocation.name}, ${row.prediction.data.predictedLocation.district}` : "—"}
-                </td>
-                <td className="px-4 py-2 font-mono text-xs text-slate-700">
-                  {row.prediction.data ? formatWindowIst(row.prediction.data.expectedWindow.start, row.prediction.data.expectedWindow.end) : "—"}
-                </td>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-slate-200">
+        {/* Table of complaints */}
+        <div className="lg:col-span-7 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+              <tr>
+                <th scope="col" className="px-4 py-2.5">Complaint</th>
+                <th scope="col" className="px-4 py-2.5">Risk</th>
+                <th scope="col" className="px-4 py-2.5">Predicted hotspot</th>
+                <th scope="col" className="px-4 py-2.5">Expected window</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {rows.map((row) => {
+                const isSelected = row.complaintId === (activeRow?.complaintId ?? selectedId);
+                return (
+                  <tr
+                    key={row.complaintId}
+                    onClick={() => {
+                      if (row.prediction.data) setSelectedId(row.complaintId);
+                    }}
+                    className={`cursor-pointer transition-colors ${
+                      isSelected
+                        ? "bg-blue-50/80 font-medium"
+                        : "hover:bg-slate-50"
+                    }`}
+                  >
+                    <td className="px-4 py-2.5 font-mono text-slate-800">
+                      <div className="flex items-center gap-2">
+                        {isSelected && <span className="h-1.5 w-1.5 rounded-full bg-blue-600 shrink-0" />}
+                        {row.complaintId}
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      {row.prediction.data ? (
+                        <div className="flex items-center gap-2">
+                          <RiskBadge level={row.prediction.data.riskLevel} />
+                          <span className="font-mono text-xs text-slate-700">{formatScorePercent(row.prediction.data.riskScore)}</span>
+                        </div>
+                      ) : row.prediction.isError ? (
+                        <span className="text-xs text-red-700">Unavailable</span>
+                      ) : (
+                        <span className="text-xs text-slate-500">Pending</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5 text-slate-700">
+                      {row.prediction.data ? `${row.prediction.data.predictedLocation.name}, ${row.prediction.data.predictedLocation.district}` : "—"}
+                    </td>
+                    <td className="px-4 py-2.5 font-mono text-xs text-slate-700">
+                      {row.prediction.data ? formatWindowIst(row.prediction.data.expectedWindow.start, row.prediction.data.expectedWindow.end) : "—"}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Hotspot Map preview */}
+        <div className="lg:col-span-5 p-4 bg-slate-50/50 flex flex-col justify-start">
+          {activeRow?.prediction.data ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                    Hotspot Map: {activeRow.complaintId}
+                  </span>
+                  <p className="text-sm font-semibold text-slate-800">
+                    {activeRow.prediction.data.predictedLocation.name}
+                  </p>
+                </div>
+                <RiskBadge level={activeRow.prediction.data.riskLevel} />
+              </div>
+              <HotspotMapLazy prediction={activeRow.prediction.data} heightPx={360} />
+            </div>
+          ) : (
+            <div className="flex h-64 items-center justify-center text-xs text-slate-500">
+              Select a complaint row to view its cash-out hotspot map.
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );

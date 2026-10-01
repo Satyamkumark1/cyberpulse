@@ -16,12 +16,14 @@ export function RoleSwitcher({ role, dark = false }: { role: ActorRole; dark?: b
     if (next === role || pending) return;
     setPending(true);
     try {
-      await fetch("/api/role", {
+      const res = await fetch("/api/role", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ role: next }),
       });
-      router.refresh();
+      // ADR-022: CITIZEN has no officer page, so go to the citizen pages.
+      if (res.ok && next === "CITIZEN") router.push("/safety");
+      else router.refresh();
     } finally {
       setPending(false);
     }
