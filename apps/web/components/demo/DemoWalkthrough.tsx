@@ -265,6 +265,7 @@ export function DemoWalkthrough() {
           <DemoStep
             step={step}
             rows={rows}
+            runId={runId}
             dispatchedAlertIds={dispatchedAlertIds}
             openAlertFor={openAlertFor}
             onOpenAlert={setOpenAlertFor}
@@ -296,6 +297,7 @@ export function DemoWalkthrough() {
 function DemoStep({
   step,
   rows,
+  runId,
   dispatchedAlertIds,
   openAlertFor,
   onOpenAlert,
@@ -303,6 +305,7 @@ function DemoStep({
 }: {
   step: number;
   rows: DemoRow[];
+  runId: string;
   dispatchedAlertIds: Record<string, string>;
   openAlertFor: string | null;
   onOpenAlert: (complaintId: string | null) => void;
@@ -314,7 +317,7 @@ function DemoStep({
     case 2:
       return <MoneyTrailListStep rows={rows} />;
     case 3:
-      return <AnalysisListStep rows={rows} />;
+      return <AnalysisListStep rows={rows} runId={runId} />;
     case 4:
       return <HotspotListStep rows={rows} />;
     case 5:
@@ -418,31 +421,336 @@ function MoneyTrailListStep({ rows }: { rows: DemoRow[] }) {
   );
 }
 
-function AnalysisListStep({ rows }: { rows: DemoRow[] }) {
+function AnalysisListStep({ rows, runId }: { rows: DemoRow[]; runId?: string }) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // Reset inspection state when runId changes
+  useEffect(() => {
+    setExpandedId(null);
+  }, [runId]);
+
+  // Reset inspection state if the selected row no longer has prediction.data
+  useEffect(() => {
+    if (!expandedId) return;
+    const selected = rows.find((r) => r.complaintId === expandedId);
+    if (!selected?.prediction.data) {
+      setExpandedId(null);
+    }
+  }, [expandedId, rows]);
+
+  // Classify each row exclusively: isError -> isPending/isIdle -> data
+  const erroredRows: DemoRow[] = [];
+  const pendingRows: DemoRow[] = [];
+  const completedRows: DemoRow[] = [];
+
+  for (const r of rows) {
+    if (r.prediction.isError) {
+      erroredRows.push(r);
+    } else if (r.prediction.isPending || r.prediction.isIdle) {
+      pendingRows.push(r);
+    } else if (r.prediction.data != null) {
+      completedRows.push(r);
+    }
+  }
+
+  const completedCount = completedRows.length;
+  const totalCount = rows.length;
+
+  const latencies = completedRows
+    .map((r) => r.prediction.data?.inferenceMs)
+    .filter((ms): ms is number => typeof ms === "number");
+  const avgLatency =
+    latencies.length > 0
+      ? Math.round(latencies.reduce((sum, val) => sum + val, 0) / latencies.length)
+      : null;
+
+  const highRiskCount = completedRows.filter((r) => r.prediction.data?.riskLevel === "HIGH").length;
+  const mediumRiskCount = completedRows.filter((r) => r.prediction.data?.riskLevel === "MEDIUM").length;
+  const lowRiskCount = completedRows.filter((r) => r.prediction.data?.riskLevel === "LOW").length;
+
+  const activeModelVersion = completedRows[0]?.prediction.data?.modelVersion ?? "XGBoost + SHAP";
+
   return (
-    <section className="space-y-3 rounded-sm border border-slate-200 p-4">
-      <h2 className="text-base font-semibold text-slate-800">AI analysis</h2>
-      <p className="text-sm leading-6 text-slate-600">
-        The prototype scores every candidate cash-out location and time window for all{" "}
-        {rows.length} complaints at once, with three tabular models, then explains each
-        top prediction with exact SHAP attribution.
-      </p>
-      <ul className="divide-y divide-slate-100">
-        {rows.map((row) => (
-          <li key={row.complaintId} className="py-3">
-            <p className="font-mono text-xs text-slate-500">{row.complaintId}</p>
-            <div className="mt-1">
-              {row.prediction.isPending || row.prediction.isIdle ? (
-                <StatePanel state="loading" title="Running prediction" message="Scoring candidate locations against the live model." />
-              ) : row.prediction.isError ? (
-                <StatePanel state="degraded" message={row.prediction.error.message} onRetry={() => row.prediction.mutate(true)} />
-              ) : (
-                <p className="text-sm text-emerald-700">Analysis complete.</p>
-              )}
+    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm" aria-labelledby="ai-analysis-heading">
+      {/* Header with Title and Model Status */}
+      <div className="border-b border-slate-200 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h2 id="ai-analysis-heading" className="text-lg font-semibold tracking-tight text-navy-900">
+                AI analysis
+              </h2>
+              {pendingRows.length > 0 ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-800">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                  Live ML Inference Active
+                </span>
+              ) : null}
             </div>
-          </li>
-        ))}
-      </ul>
+            <p className="mt-1 text-sm text-slate-600">
+              The prototype scores every candidate cash-out location and time window for all{" "}
+              {totalCount} complaints at once, with three tabular models, then explains each
+              top prediction with exact SHAP attribution.
+            </p>
+          </div>
+          <div className="text-right">
+            <span className="inline-block rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 font-mono text-xs text-slate-600">
+              Model: {activeModelVersion}
+            </span>
+          </div>
+        </div>
+
+        {/* Executive Batch Inference Summary */}
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="rounded-lg border border-slate-200/80 bg-slate-50/70 p-3">
+            <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Evaluated</dt>
+            <dd className="mt-1 flex items-baseline gap-1.5">
+              <span className="text-xl font-bold tracking-tight text-navy-900">{completedCount}</span>
+              <span className="text-xs text-slate-500">/ {totalCount} complaints</span>
+            </dd>
+          </div>
+
+          <div className="rounded-lg border border-slate-200/80 bg-slate-50/70 p-3">
+            <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Mean Latency</dt>
+            <dd className="mt-1 flex items-baseline gap-1">
+              <span className="font-mono text-xl font-bold tracking-tight text-navy-900">
+                {avgLatency != null ? `${avgLatency}` : "—"}
+              </span>
+              <span className="text-xs text-slate-500">{avgLatency != null ? "ms / run" : ""}</span>
+            </dd>
+          </div>
+
+          <div className="rounded-lg border border-slate-200/80 bg-slate-50/70 p-3">
+            <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Risk Distribution</dt>
+            <dd className="mt-1.5 flex items-center gap-1.5 text-xs font-medium">
+              <span className="rounded bg-red-100 px-1.5 py-0.5 text-red-800">{highRiskCount} High</span>
+              <span className="rounded bg-amber-100 px-1.5 py-0.5 text-amber-800">{mediumRiskCount} Med</span>
+              <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-emerald-800">{lowRiskCount} Low</span>
+            </dd>
+          </div>
+
+          <div className="rounded-lg border border-slate-200/80 bg-slate-50/70 p-3">
+            <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Pipeline State</dt>
+            <dd className="mt-1 flex items-center gap-1.5 text-xs font-medium text-slate-700">
+              {erroredRows.length > 0 ? (
+                <span className="text-red-700 font-semibold">⚠ {erroredRows.length} Degraded</span>
+              ) : pendingRows.length > 0 ? (
+                <span className="text-sih-blue-600 font-semibold animate-pulse">Running {pendingRows.length}…</span>
+              ) : (
+                <span className="text-emerald-700 font-semibold">✓ 100% Settled</span>
+              )}
+            </dd>
+          </div>
+        </div>
+
+        {/* 5-Stage Pipeline Visualizer */}
+        <div className="mt-4 rounded-lg border border-slate-200 bg-white p-3">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Ensemble Architecture</p>
+          <div className="mt-2 grid grid-cols-2 gap-2 text-xs sm:grid-cols-5">
+            <div className="flex items-center gap-2 rounded bg-slate-50 p-2 border border-slate-100">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-slate-700">1</span>
+              <div>
+                <p className="font-medium text-slate-800">Features</p>
+                <p className="text-[10px] text-slate-500">13 Numeric Signals</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 rounded bg-slate-50 p-2 border border-slate-100">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-slate-700">2</span>
+              <div>
+                <p className="font-medium text-slate-800">XGBoost Risk</p>
+                <p className="text-[10px] text-slate-500">Cash-out Scorer</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 rounded bg-slate-50 p-2 border border-slate-100">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-slate-700">3</span>
+              <div>
+                <p className="font-medium text-slate-800">Hotspot Engine</p>
+                <p className="text-[10px] text-slate-500">Spatial H3 Clusters</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 rounded bg-slate-50 p-2 border border-slate-100">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-slate-700">4</span>
+              <div>
+                <p className="font-medium text-slate-800">Temporal Window</p>
+                <p className="text-[10px] text-slate-500">Withdrawal Time</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 rounded bg-slate-50 p-2 border border-slate-100">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-slate-700">5</span>
+              <div>
+                <p className="font-medium text-slate-800">SHAP Attrib</p>
+                <p className="text-[10px] text-slate-500">Exact Explainability</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Structured Inference Matrix */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+            <tr>
+              <th scope="col" className="px-4 py-2.5">Complaint</th>
+              <th scope="col" className="px-4 py-2.5">Inference Status &amp; Time</th>
+              <th scope="col" className="px-4 py-2.5">Risk Score</th>
+              <th scope="col" className="px-4 py-2.5">Predicted Hotspot</th>
+              <th scope="col" className="px-4 py-2.5">Temporal Window</th>
+              <th scope="col" className="px-4 py-2.5 text-right">Inspection</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {rows.map((row) => {
+              const c = row.complaintQuery.data?.complaint;
+              const isError = row.prediction.isError;
+              const isPending = !isError && (row.prediction.isPending || row.prediction.isIdle);
+              const p = !isError && !isPending ? row.prediction.data : null;
+              const isExpanded = expandedId === row.complaintId;
+
+              return (
+                <tr key={row.complaintId} className={isExpanded ? "bg-slate-50/60" : "hover:bg-slate-50/40 transition-colors"}>
+                  <td className="px-4 py-3 align-top">
+                    <p className="font-mono text-sm font-semibold text-slate-900">{row.complaintId}</p>
+                    {c ? (
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        {c.fraudType.replaceAll("_", " ")} · {c.city}
+                      </p>
+                    ) : null}
+                  </td>
+
+                  <td className="px-4 py-3 align-top">
+                    {isError ? (
+                      <div className="max-w-xs">
+                        <StatePanel
+                          state="degraded"
+                          message={row.prediction.error.message}
+                          onRetry={() => row.prediction.mutate(true)}
+                        />
+                      </div>
+                    ) : isPending ? (
+                      <div className="flex items-center gap-2 text-xs text-sih-blue-600">
+                        <span className="h-2 w-2 rounded-full bg-sih-blue-500 animate-ping" />
+                        <span>Scoring candidate locations…</span>
+                      </div>
+                    ) : p ? (
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-emerald-700 font-semibold text-xs">✓</span>
+                          <span className="text-xs font-medium text-emerald-800">Analysis complete.</span>
+                        </div>
+                        {p.inferenceMs != null ? (
+                          <p className="mt-0.5 font-mono text-xs text-slate-500">{p.inferenceMs} ms latency</p>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-slate-400">Idle</span>
+                    )}
+                  </td>
+
+                  <td className="px-4 py-3 align-top">
+                    {p ? (
+                      <div className="flex items-center gap-2">
+                        <RiskBadge level={p.riskLevel} />
+                        <span className="font-mono text-xs font-semibold text-slate-700">
+                          {formatScorePercent(p.riskScore)}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-slate-400">—</span>
+                    )}
+                  </td>
+
+                  <td className="px-4 py-3 align-top">
+                    {p ? (
+                      <div>
+                        <p className="font-medium text-slate-800 text-xs">{p.predictedLocation.name}</p>
+                        <p className="text-[11px] text-slate-500">
+                          {p.predictedLocation.district} · {p.likelyAtms} ATMs in radius
+                        </p>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-slate-400">—</span>
+                    )}
+                  </td>
+
+                  <td className="px-4 py-3 align-top">
+                    {p ? (
+                      <span className="font-mono text-xs text-slate-700">
+                        {formatWindowIst(p.expectedWindow.start, p.expectedWindow.end)}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-400">—</span>
+                    )}
+                  </td>
+
+                  <td className="px-4 py-3 text-right align-top">
+                    {p ? (
+                      <button
+                        type="button"
+                        onClick={() => setExpandedId(isExpanded ? null : row.complaintId)}
+                        aria-expanded={isExpanded}
+                        aria-controls={`inspection-drawer-${row.complaintId}`}
+                        className="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                      >
+                        {isExpanded ? "Collapse" : "Inspect"}
+                        <span aria-hidden="true">{isExpanded ? "▲" : "▼"}</span>
+                      </button>
+                    ) : null}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Expanded Quick Inspection Drawer */}
+      {expandedId && (() => {
+        const selected = rows.find((r) => r.complaintId === expandedId && r.prediction.data);
+        if (!selected?.prediction.data) return null;
+        const p = selected.prediction.data;
+
+        return (
+          <div
+            id={`inspection-drawer-${selected.complaintId}`}
+            className="border-t border-slate-200 bg-slate-50/70 p-5"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-navy-900">
+                  Detailed Inference Breakdown: {selected.complaintId}
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Pipeline stage latencies &amp; exact SHAP attribution factors.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setExpandedId(null)}
+                className="text-xs text-slate-500 hover:text-slate-800"
+              >
+                Close ✕
+              </button>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <div>
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">
+                  Pipeline Stage Timings
+                </h4>
+                <PipelineStages prediction={p} />
+              </div>
+
+              <div>
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">
+                  Top SHAP Signal Contributions
+                </h4>
+                <PredictionFactors prediction={p} />
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </section>
   );
 }
