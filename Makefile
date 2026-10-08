@@ -1,4 +1,4 @@
-.PHONY: setup dev verify up down migrate generate signal-check pii-scan seed train evaluate lint typecheck test-unit test-int clean venvs
+.PHONY: setup dev verify up down migrate generate signal-check pii-scan seed train evaluate promote lint typecheck test-unit test-int clean venvs
 
 # The app's own env file supplies DATABASE_URL to migrate/seed/train/evaluate.
 -include apps/web/.env.local
@@ -11,7 +11,9 @@ SCRIPTS_PY := scripts/.venv/bin/python
 
 # README.md §Setup, architecture/deployment-architecture.md §3.1.
 # Clean clone -> running, seeded stack in <= 30 min (NFR-17, TC-DOC-001).
-setup: venvs up migrate generate signal-check pii-scan seed train evaluate
+MODEL_STAGING_DIR := apps/ml-service/models/staging
+
+setup: venvs up migrate generate signal-check pii-scan seed train evaluate promote
 
 venvs: $(ML_PY) $(SCRIPTS_PY)
 
@@ -57,10 +59,13 @@ seed:
 	pnpm --filter @cyberpulse/db run seed
 
 train:
-	$(ML_PY) apps/ml-service/training/train.py
+	MODEL_OUTPUT_DIR=$(MODEL_STAGING_DIR) $(ML_PY) apps/ml-service/training/train.py
 
 evaluate:
-	$(ML_PY) apps/ml-service/training/evaluate.py
+	MODEL_DIR=$(MODEL_STAGING_DIR) $(ML_PY) apps/ml-service/training/evaluate.py
+
+promote:
+	$(ML_PY) scripts/promote_model.py --staging $(MODEL_STAGING_DIR) --production apps/ml-service/models
 
 lint:
 	pnpm run lint

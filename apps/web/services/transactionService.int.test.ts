@@ -296,6 +296,20 @@ describe("transactionService simulation — architecture/api-design.md API-023",
     expect(rows).toHaveLength(0);
   });
 
+  it("retains elapsed generated events after an explicit pause", async () => {
+    const longAgo = new Date(Date.now() - 10 * 60_000).toISOString();
+    await db
+      .insert(simulationEvents)
+      .values({ eventRef: "SIM-CONTROL", payload: { status: "RUNNING", startedAt: longAgo }, emittedAt: longAgo })
+      .onConflictDoUpdate({ target: simulationEvents.eventRef, set: { payload: { status: "RUNNING", startedAt: longAgo }, emittedAt: longAgo } });
+
+    await simulationPause(admin);
+    const paused = await simulationGetEvents(undefined, admin);
+
+    expect(paused.status).toBe("PAUSED");
+    expect(paused.events.length).toBeGreaterThan(0);
+  });
+
   it("writes only to simulation_events — the transactions table is untouched by a running simulation (the isolation check)", async () => {
     const countTransactions = async () => {
       const rows = await db.select({ count: sql<number>`count(*)::int` }).from(transactions);

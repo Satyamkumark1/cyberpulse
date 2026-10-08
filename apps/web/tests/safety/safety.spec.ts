@@ -142,7 +142,7 @@ test("TC-SAFE-033: a citizen report flows to the officer queue, gets a real pred
 
   await lookUp(page, report.complaintId, report.trackingCode);
   const current = page.getByTestId("citizen-stage-timeline").locator('[aria-current="step"]');
-  await expect(current).toContainText("Alert sent to bank and police");
+  await expect(current).toContainText("Internal alert queued for prototype review");
 });
 
 test("TC-SAFE-037: Report Now can be completed from the keyboard, with focus moved to each step", async ({ page }) => {

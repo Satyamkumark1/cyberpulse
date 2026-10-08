@@ -192,7 +192,7 @@ const en = {
     stages: {
       RECEIVED: "Received",
       UNDER_REVIEW: "Under review",
-      ALERT_SENT: "Alert sent to bank and police",
+    ALERT_SENT: "Internal alert queued for prototype review",
       RESOLVED: "Resolved",
     } satisfies Record<CitizenStage, string>,
     done: "done",
@@ -374,7 +374,7 @@ const hi: Copy = {
     stages: {
       RECEIVED: "मिल गई",
       UNDER_REVIEW: "जाँच जारी",
-      ALERT_SENT: "बैंक और पुलिस को अलर्ट भेजा गया",
+      ALERT_SENT: "प्रोटोटाइप समीक्षा के लिए आंतरिक अलर्ट कतारबद्ध",
       RESOLVED: "सुलझ गई",
     },
     done: "पूरा",

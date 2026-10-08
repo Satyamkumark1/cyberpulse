@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { randomUUID } from "node:crypto";
+import { COMPLAINT_STATUSES, FRAUD_TYPES, RISK_LEVELS } from "@cyberpulse/shared/enums";
 import { RiskBadge } from "@/components/common/RiskBadge";
 import { StatePanel } from "@/components/common/StatePanel";
 import { formatPaise, formatScorePercent, formatTimestampIst } from "@/lib/formatters";
@@ -11,15 +12,46 @@ import { list, listStates, type ComplaintListQuery } from "@/services/complaintS
 export default async function ComplaintsPage({
   searchParams,
 }: {
-  searchParams: Promise<Record<string, string | undefined>>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const state = params.state || undefined;
+  // Repeated query parameters are rejected rather than silently choosing a
+  // value an intermediary may have injected. Single values retain the normal
+  // Next.js behavior, while absent values remain undefined.
+  const singleParam = (value: string | string[] | undefined): string | undefined => typeof value === "string" ? value : undefined;
+  const state = singleParam(params.state);
+  const q = singleParam(params.q)?.trim() || undefined;
+  const fraudTypeParam = singleParam(params.fraudType);
+  const statusParam = singleParam(params.status);
+  const riskParam = singleParam(params.riskLevel);
+  const sortParam = singleParam(params.sort);
+  const orderParam = singleParam(params.order);
+  const pageParam = singleParam(params.page);
+  const fromParam = singleParam(params.from);
+  const toParam = singleParam(params.to);
+  const dateInputValue = (value: string | undefined) => value?.slice(0, 10) ?? "";
+  const from = fromParam ? /^\d{4}-\d{2}-\d{2}$/.test(fromParam) ? `${fromParam}T00:00:00.000Z` : fromParam : undefined;
+  const to = toParam ? /^\d{4}-\d{2}-\d{2}$/.test(toParam) ? `${toParam}T23:59:59.999Z` : toParam : undefined;
+  const city = singleParam(params.city);
+  const fraudType = FRAUD_TYPES.includes(fraudTypeParam as (typeof FRAUD_TYPES)[number]) ? fraudTypeParam as (typeof FRAUD_TYPES)[number] : undefined;
+  const status = COMPLAINT_STATUSES.includes(statusParam as (typeof COMPLAINT_STATUSES)[number]) ? statusParam as (typeof COMPLAINT_STATUSES)[number] : undefined;
+  const riskLevel = [...RISK_LEVELS, "NONE"] as const;
+  const risk = riskLevel.includes(riskParam as (typeof riskLevel)[number]) ? riskParam as (typeof riskLevel)[number] : undefined;
+  const sort = (["complaintTimestamp", "amount", "riskScore"] as const).includes(sortParam as "complaintTimestamp" | "amount" | "riskScore") ? sortParam as "complaintTimestamp" | "amount" | "riskScore" : "complaintTimestamp";
+  const order = orderParam === "asc" ? "asc" : "desc";
+  const page = Math.max(1, Number.isInteger(Number(pageParam)) ? Number(pageParam) : 1);
   const query: ComplaintListQuery = {
-    page: Number(params.page ?? 1) || 1,
+    page,
     pageSize: 25,
-    sort: "complaintTimestamp",
-    order: "desc",
+    q,
+    fraudType,
+    status,
+    riskLevel: risk,
+    from,
+    to,
+    city,
+    sort,
+    order,
     ...(state ? { state } : {}),
   };
   const role = await resolveRoleFromNextHeaders();
@@ -42,6 +74,31 @@ export default async function ComplaintsPage({
 
       <form className="mt-4 flex flex-wrap items-end gap-3" method="get">
         <label className="text-sm text-slate-700">
+          Search
+          <input name="q" defaultValue={q ?? ""} placeholder="ID or city" className="mt-1 block w-44 rounded-sm border border-slate-300 px-2 py-1.5 text-sm" />
+        </label>
+        <label className="text-sm text-slate-700">
+          Fraud type
+          <select name="fraudType" defaultValue={fraudType ?? ""} className="mt-1 block rounded-sm border border-slate-300 px-2 py-1.5 text-sm">
+            <option value="">All types</option>
+            {FRAUD_TYPES.map((value) => <option key={value} value={value}>{value.replace(/_/g, " ")}</option>)}
+          </select>
+        </label>
+        <label className="text-sm text-slate-700">
+          Status
+          <select name="status" defaultValue={status ?? ""} className="mt-1 block rounded-sm border border-slate-300 px-2 py-1.5 text-sm">
+            <option value="">All statuses</option>
+            {COMPLAINT_STATUSES.map((value) => <option key={value} value={value}>{value.replace(/_/g, " ")}</option>)}
+          </select>
+        </label>
+        <label className="text-sm text-slate-700">
+          Risk
+          <select name="riskLevel" defaultValue={risk ?? ""} className="mt-1 block rounded-sm border border-slate-300 px-2 py-1.5 text-sm">
+            <option value="">All risk</option>
+            {[...RISK_LEVELS, "NONE"].map((value) => <option key={value} value={value}>{value}</option>)}
+          </select>
+        </label>
+        <label className="text-sm text-slate-700">
           State
           <select name="state" defaultValue={state ?? ""} className="mt-1 block rounded-sm border border-slate-300 px-2 py-1.5 text-sm">
             <option value="">All states</option>
@@ -51,6 +108,28 @@ export default async function ComplaintsPage({
               </option>
             ))}
           </select>
+        </label>
+        <label className="text-sm text-slate-700">
+          City
+          <input name="city" defaultValue={city ?? ""} className="mt-1 block w-36 rounded-sm border border-slate-300 px-2 py-1.5 text-sm" />
+        </label>
+        <label className="text-sm text-slate-700">
+          From
+          <input name="from" type="date" defaultValue={dateInputValue(fromParam)} className="mt-1 block rounded-sm border border-slate-300 px-2 py-1.5 text-sm" />
+        </label>
+        <label className="text-sm text-slate-700">
+          To
+          <input name="to" type="date" defaultValue={dateInputValue(toParam)} className="mt-1 block rounded-sm border border-slate-300 px-2 py-1.5 text-sm" />
+        </label>
+        <label className="text-sm text-slate-700">
+          Sort
+          <select name="sort" defaultValue={sort} className="mt-1 block rounded-sm border border-slate-300 px-2 py-1.5 text-sm">
+            <option value="complaintTimestamp">Filed date</option><option value="amount">Amount</option><option value="riskScore">Risk</option>
+          </select>
+        </label>
+        <label className="text-sm text-slate-700">
+          Order
+          <select name="order" defaultValue={order} className="mt-1 block rounded-sm border border-slate-300 px-2 py-1.5 text-sm"><option value="desc">Descending</option><option value="asc">Ascending</option></select>
         </label>
         <button
           type="submit"
@@ -112,6 +191,16 @@ export default async function ComplaintsPage({
           </table>
         </div>
       )}
+
+      {result && result.totalPages > 1 ? (
+        <nav className="mt-4 flex items-center justify-between text-sm" aria-label="Complaint pages">
+          <span className="text-slate-500">Page {result.page} of {result.totalPages}</span>
+          <div className="flex gap-2">
+            {result.page > 1 ? <Link className="rounded-sm border border-slate-300 px-3 py-1.5 hover:bg-slate-50" href={{ query: { ...params, page: String(result.page - 1) } }}>Previous</Link> : null}
+            {result.page < result.totalPages ? <Link className="rounded-sm border border-slate-300 px-3 py-1.5 hover:bg-slate-50" href={{ query: { ...params, page: String(result.page + 1) } }}>Next</Link> : null}
+          </div>
+        </nav>
+      ) : null}
     </div>
   );
 }

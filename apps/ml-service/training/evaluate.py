@@ -10,6 +10,7 @@ release gate, and — only if every gate clears — writes `model_metrics` and
 import datetime as dt
 import itertools
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Final
@@ -32,7 +33,8 @@ from sklearn.preprocessing import StandardScaler
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.engine.explain import to_factors
-from app.engine.features import FEATURE_ORDER, FEATURE_SCHEMA_VERSION
+from app.engine.features import FEATURE_ORDER, FEATURE_SCHEMA_VERSION, CandidateCell
+from app.engine.hotspot import combined_score, compute_terms
 from app.engine.model import CalibratedRiskModel, TemporalModel
 from app.engine.temporal import BIN_HOURS
 from training.generate_training_data import (
@@ -128,6 +130,41 @@ def score_holdout(model: CalibratedRiskModel, holdout_df: pd.DataFrame, feature_
     scored = holdout_df.copy()
     scored["score"] = model.predict_proba(holdout_df[feature_cols].to_numpy())
     return scored
+
+
+def score_served_pipeline(scored: pd.DataFrame) -> pd.DataFrame:
+    """Apply the same calibrated-probability + domain-term blend as /predict.
+
+    The dataset carries candidate metadata specifically to make this a
+    complaint-level evaluation of the served ranking, not a proxy classifier
+    ranking. The classifier score remains available as ``score`` for separate
+    probability metrics.
+    """
+    result = scored.copy()
+    result["composite_score"] = 0.0
+    for complaint_id, group in result.groupby("complaint_id", sort=False):
+        cells = [
+            CandidateCell(
+                h3_index=str(row.h3_index), lat=float(row.cell_lat), lon=float(row.cell_lon),
+                atm_count=int(row.cell_atm_count), atm_density=float(row.cell_atm_density),
+                historical_hotspot_score=float(row.historical_hotspot_score),
+                withdrawal_count=int(row.cell_withdrawal_count),
+            )
+            for row in group.itertuples()
+        ]
+        values = []
+        for row, cell in zip(group.itertuples(), cells, strict=True):
+            terms = compute_terms(
+                cell, cells,
+                txn_velocity_1h=float(row.txn_velocity_1h),
+                recency_hours=float(row.recency_hours),
+                linked_account_count=float(row.linked_account_count),
+                linked_depth=float(row.linked_depth),
+                hour_of_day=int(row.hour_of_day),
+            )
+            values.append(combined_score(float(row.score), terms))
+        result.loc[group.index, "composite_score"] = values
+    return result
 
 
 def run_ablations(train_df: pd.DataFrame, cal_df: pd.DataFrame, holdout_df: pd.DataFrame) -> dict[str, float]:
@@ -252,7 +289,7 @@ def write_model_metrics(conn: psycopg.Connection, metrics: dict[str, float], n_t
 
 
 def main() -> None:
-    model_dir = Path(__file__).resolve().parents[1] / "models"
+    model_dir = Path(os.environ.get("MODEL_DIR", str(Path(__file__).resolve().parents[1] / "models" / "staging")))
     risk_model: CalibratedRiskModel = joblib.load(model_dir / "risk_model.joblib")
     temporal_model: TemporalModel = joblib.load(model_dir / "temporal_model.joblib")
 
@@ -261,6 +298,7 @@ def main() -> None:
         train_df = dataset[dataset["split"] == "train"]
         cal_df = dataset[dataset["split"] == "calibration"]
         holdout_df = score_holdout(risk_model, dataset[dataset["split"] == "holdout"], FEATURE_ORDER)
+        served_holdout_df = score_served_pipeline(holdout_df)
 
         y_true = holdout_df["y"].to_numpy()
         y_score = holdout_df["score"].to_numpy()
@@ -273,7 +311,11 @@ def main() -> None:
             "recall": float(recall_score(y_true, y_pred, zero_division=0)),
             "f1": float(f1_score(y_true, y_pred, zero_division=0)),
             "calibration_ece": expected_calibration_error(y_score, y_true),
-            **rank_metrics(holdout_df, "score"),
+            # Published ranking gates use the exact served composite score.
+            **rank_metrics(served_holdout_df, "composite_score"),
+            # Keep classifier ranking separate; calibration and these values
+            # must not be read as metrics for the blend.
+            **{f"classifier_{key}": value for key, value in rank_metrics(holdout_df, "score").items()},
             **temporal_metrics(temporal_model, holdout_df),
         }
 
@@ -281,7 +323,8 @@ def main() -> None:
         baselines = run_baselines(train_df, cal_df, holdout_df)
         for name, value in baselines.items():
             print(f"  {name}: {value:.4f}")
-        print(f"  XGBoost (this model): {metrics['top3_hit_rate']:.4f}")
+        print(f"  served composite ranker: {metrics['top3_hit_rate']:.4f}")
+        print(f"  classifier probability ranker: {metrics['classifier_top3_hit_rate']:.4f}")
 
         print("--- ablations (top-3 hit rate) ---")
         ablations = run_ablations(train_df, cal_df, holdout_df)
@@ -320,6 +363,8 @@ def main() -> None:
         "trainingData": f"Synthetic corpus, seed {DATASET_SEED}, generated by scripts/generate-data/generator.py",
         "limitations": [
             "Metrics describe recovery of planted synthetic patterns, not real-world accuracy",
+            "The composite ranking metrics use the same calibrated-probability and domain-term scorer as serving; classifier probability metrics are reported separately",
+            "The composite score is a ranking score, not a calibrated cash-out probability",
             "Labels derive from withdrawals.complaint_id, which would not exist in production without outcome capture",
             "No bias or differential-impact evaluation is possible on synthetic data",
             "Candidate generation bounds achievable recall",
@@ -331,6 +376,10 @@ def main() -> None:
         "explanationChecks": explanation,
     }
     (model_dir / "model_card.json").write_text(json.dumps(model_card, indent=2))
+    (model_dir / "evaluation_passed.json").write_text(
+        json.dumps({"modelVersion": MODEL_VERSION, "holdoutGatesPassed": True, "evaluatedAt": dt.datetime.now(dt.timezone.utc).isoformat()}, indent=2)
+        + "\n"
+    )
     print(f"\nevaluate.py PASSED: all gates cleared. model_metrics written; model_card.json -> {model_dir}")
 
 

@@ -406,6 +406,32 @@ async function upsertSimulationControl(payload: SimulationControlPayload): Promi
     .onConflictDoUpdate({ target: simulationEvents.eventRef, set: { payload, emittedAt: new Date().toISOString() } });
 }
 
+function generatedEventsForRun(startedAt: string, nowMs = Date.now()): SimulationEvent[] {
+  const startedAtMs = new Date(startedAt).getTime();
+  const elapsedTicks = Math.min(SIMULATION_MAX_EVENTS, Math.floor((nowMs - startedAtMs) / SIMULATION_TICK_MS));
+  return Array.from({ length: Math.max(0, elapsedTicks) }, (_, index) => {
+    const sequence = index + 1;
+    const channel = SIMULATION_CHANNELS[Math.floor(deterministicUnit(sequence) * SIMULATION_CHANNELS.length)]!;
+    const amountPaise = Math.round(5_00_00 + deterministicUnit(sequence + 0.5) * 45_00_00);
+    return {
+      eventRef: `SIM-EVT-${startedAtMs}-${sequence}`,
+      emittedAt: new Date(startedAtMs + sequence * SIMULATION_TICK_MS).toISOString(),
+      channel,
+      amountPaise,
+    };
+  });
+}
+
+async function persistGeneratedEvents(startedAt: string): Promise<void> {
+  const events = generatedEventsForRun(startedAt);
+  if (events.length === 0) return;
+  await db.insert(simulationEvents).values(events.map((event) => ({
+    eventRef: event.eventRef,
+    payload: { channel: event.channel, amountPaise: event.amountPaise },
+    emittedAt: event.emittedAt,
+  }))).onConflictDoNothing({ target: simulationEvents.eventRef });
+}
+
 export async function simulationStart(ctx: RequestContext): Promise<SimulationControlPayload> {
   requireAdminOrDemo(ctx);
   const existing = await getSimulationControlRow();
@@ -422,6 +448,9 @@ export async function simulationPause(ctx: RequestContext): Promise<SimulationCo
   requireAdminOrDemo(ctx);
   const existing = await getSimulationControlRow();
   const startedAt = (existing?.payload as SimulationControlPayload | undefined)?.startedAt ?? new Date().toISOString();
+  // Reads are side-effect free, so materialize the elapsed run history at the
+  // explicit pause boundary before changing the control state to PAUSED.
+  await persistGeneratedEvents(startedAt);
   const payload: SimulationControlPayload = { status: "PAUSED", startedAt };
   await upsertSimulationControl(payload);
   return payload;
@@ -459,22 +488,9 @@ export async function simulationGetEvents(
   const control = await getSimulationControlRow();
   const controlPayload = control?.payload as SimulationControlPayload | undefined;
 
+  const generatedEvents = new Map<string, SimulationEvent>();
   if (controlPayload?.status === "RUNNING") {
-    const startedAtMs = new Date(controlPayload.startedAt).getTime();
-    const elapsedTicks = Math.min(SIMULATION_MAX_EVENTS, Math.floor((Date.now() - startedAtMs) / SIMULATION_TICK_MS));
-
-    for (let sequence = 1; sequence <= elapsedTicks; sequence++) {
-      const channel = SIMULATION_CHANNELS[Math.floor(deterministicUnit(sequence) * SIMULATION_CHANNELS.length)]!;
-      const amountPaise = Math.round(5_00_00 + deterministicUnit(sequence + 0.5) * 45_00_00);
-      await db
-        .insert(simulationEvents)
-        .values({
-          eventRef: `SIM-EVT-${startedAtMs}-${sequence}`,
-          payload: { channel, amountPaise },
-          emittedAt: new Date(startedAtMs + sequence * SIMULATION_TICK_MS).toISOString(),
-        })
-        .onConflictDoNothing({ target: simulationEvents.eventRef });
-    }
+    for (const event of generatedEventsForRun(controlPayload.startedAt)) generatedEvents.set(event.eventRef, event);
   }
 
   const rows = await db
@@ -488,11 +504,17 @@ export async function simulationGetEvents(
     .orderBy(asc(simulationEvents.emittedAt))
     .limit(SIMULATION_MAX_EVENTS);
 
+  const persistedEvents = rows.map((r) => {
+    const payload = r.payload as { channel: TxnChannel; amountPaise: number };
+    return { eventRef: r.eventRef, emittedAt: r.emittedAt, channel: payload.channel, amountPaise: payload.amountPaise };
+  });
+  const events = [...new Map([...generatedEvents, ...persistedEvents.map((event) => [event.eventRef, event] as const)]).values()]
+    .filter((event) => !since || event.emittedAt > since)
+    .sort((a, b) => a.emittedAt.localeCompare(b.emittedAt))
+    .slice(0, SIMULATION_MAX_EVENTS);
+
   return {
     status: controlPayload?.status ?? "PAUSED",
-    events: rows.map((r) => {
-      const payload = r.payload as { channel: TxnChannel; amountPaise: number };
-      return { eventRef: r.eventRef, emittedAt: r.emittedAt, channel: payload.channel, amountPaise: payload.amountPaise };
-    }),
+    events,
   };
 }

@@ -31,9 +31,14 @@ export function formatTimestampIst(iso: string): string {
 
 // e.g. "11:00 – 13:00 IST"
 export function formatWindowIst(startIso: string, endIso: string): string {
-  const timeOnly = (iso: string) =>
-    new Date(iso).toLocaleTimeString("en-GB", { timeZone: IST_TIMEZONE, hour: "2-digit", minute: "2-digit", hour12: false });
-  return `${timeOnly(startIso)} – ${timeOnly(endIso)} IST`;
+  const options = { timeZone: IST_TIMEZONE, hour: "2-digit", minute: "2-digit", hour12: false } as const;
+  const timeOnly = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", options);
+  const start = new Date(startIso);
+  const end = new Date(endIso);
+  const sameDay = start.toLocaleDateString("en-CA", { timeZone: IST_TIMEZONE }) === end.toLocaleDateString("en-CA", { timeZone: IST_TIMEZONE });
+  if (sameDay) return `${timeOnly(startIso)} – ${timeOnly(endIso)} IST`;
+  const dateOnly = (date: Date) => date.toLocaleDateString("en-GB", { timeZone: IST_TIMEZONE, day: "2-digit", month: "short" });
+  return `${dateOnly(start)} ${timeOnly(startIso)} – ${dateOnly(end)} ${timeOnly(endIso)} IST`;
 }
 
 // e.g. "180 m" below 1 km, "1.4 km" at or above it.

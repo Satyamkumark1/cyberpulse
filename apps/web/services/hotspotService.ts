@@ -1,6 +1,6 @@
 import { gridDisk, cellToLatLng } from "h3-js";
 import { db, dbSchema } from "@cyberpulse/db";
-import { and, desc, eq, gte, inArray, lt, lte, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lt, lte, sql, type SQL } from "drizzle-orm";
 import { CANDIDATE_CELL_CAP } from "@cyberpulse/shared/constants";
 import type { RiskLevel } from "@cyberpulse/shared/enums";
 import { NotFoundError } from "@/lib/errors";
@@ -73,11 +73,15 @@ export async function candidatesForComplaint(
     .innerJoin(atms, eq(atms.id, withdrawals.atmId))
     .where(and(eq(atms.state, complaintState), lt(withdrawals.timestamp, complaintTimestamp)))
     .groupBy(withdrawals.h3R8)
-    .orderBy(sql`count(*) desc`)
+    .orderBy(sql`count(*) desc`, asc(withdrawals.h3R8))
     .limit(HISTORICAL_TOP_N);
 
-  const disk = new Set(gridDisk(victimH3R8, K_RING));
-  const historical = stateWithdrawalCells.map((r) => r.h3).filter((h) => !disk.has(h));
+  const disk = [...new Set(gridDisk(victimH3R8, K_RING))].sort();
+  const diskSet = new Set(disk);
+  const historical = stateWithdrawalCells
+    .sort((a, b) => b.count - a.count || a.h3.localeCompare(b.h3))
+    .map((r) => r.h3)
+    .filter((h) => !diskSet.has(h));
   const ordered = [...disk, ...historical].slice(0, CANDIDATE_CELL_CAP);
 
   return ordered.map((h3Index) => {
@@ -177,6 +181,31 @@ export async function getDetail(h3Index: string, ctx: RequestContext) {
     .sort((a, b) => a.distance - b.distance)
     .slice(0, NEARBY_ATM_LIMIT);
 
+  // GUARD is a duty-coverage role, not a complaint-intelligence role. Keep
+  // the API boundary narrow even when a caller bypasses the dashboard UI.
+  if (ctx.role === "GUARD") {
+    return {
+      h3Index: hotspot.h3Index,
+      name: hotspot.name,
+      latitude: hotspot.latitude,
+      longitude: hotspot.longitude,
+      city: hotspot.city,
+      district: hotspot.district,
+      state: hotspot.state,
+      riskScore: hotspot.riskScore,
+      riskLevel: hotspot.riskLevel,
+      expectedStart: hotspot.expectedStart,
+      expectedEnd: hotspot.expectedEnd,
+      likelyAtms: hotspot.likelyAtmCount,
+      likelyAtmCount: hotspot.likelyAtmCount,
+      nearbyAtms,
+      topFactors: [],
+      relatedComplaints: [],
+      predictionRef: null,
+      estimatedExposurePaise: null,
+    };
+  }
+
   // "the most recent prediction naming this cell" (API-031) — the latest
   // prediction row that resolved to this hotspot, across any complaint.
   const [latestPrediction] = await db
@@ -222,7 +251,7 @@ export async function getDetail(h3Index: string, ctx: RequestContext) {
     nearbyAtms,
     topFactors,
     relatedComplaints,
-    // AC-010-05: the drawer's "Generate Alert" needs the prediction to alert on.
+    // AC-010-05: the drawer's internal-alert action needs the prediction to alert on.
     predictionRef: latestPrediction?.predictionRef ?? null,
     estimatedExposurePaise: latestPrediction ? Number(latestPrediction.estimatedExposurePaise) : null,
   };

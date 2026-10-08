@@ -71,7 +71,7 @@ export default async function InvestigationsPage({
           <option value="NEW">New</option>
           <option value="ANALYZING">Analyzing</option>
           <option value="UNDER_REVIEW">Under review</option>
-          <option value="ALERT_SENT">Alert sent</option>
+          <option value="ALERT_SENT">Internal alert queued</option>
           <option value="RESOLVED">Resolved</option>
           <option value="MONITORING">Monitoring</option>
         </select>

@@ -7,8 +7,8 @@ export const ANALYSIS_STEP = 3;
 
 /**
  * The run ends on step 6, which carries the alert controls and the run
- * summary. Arriving there dispatches nothing: an alert is sent only by
- * pressing Generate Alert, so the scenario *enables* alert generation exactly
+ * summary. Arriving there queues nothing: an internal alert is created only by
+ * pressing Queue Internal Alert, so the scenario *enables* alert queueing exactly
  * as FR-19.1 words it, and the run finishes on the summary rather than one
  * click short of it. Nothing here may ever advance past this step into an
  * action — this prototype is decision support, never automated enforcement.

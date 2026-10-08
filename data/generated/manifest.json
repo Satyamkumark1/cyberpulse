@@ -7,7 +7,7 @@
     "transactions.csv": "3fa69d71fbad357cfc1ab9b4770c3a6cfaa8259eb594ceb5daeb492c6195dfa9",
     "withdrawals.csv": "37dd70fe3f05994de0e9a707fa67c4b7ebe7d38f0e13fd76a03243c68b2eb7cd"
   },
-  "generatedAt": "2026-09-18T07:01:42.453378+00:00",
+  "generatedAt": "2026-10-08T06:34:22.698843+00:00",
   "rowCounts": {
     "accounts": 12000,
     "atms": 520,

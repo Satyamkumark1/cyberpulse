@@ -99,7 +99,13 @@ export async function checkMlHealth(): Promise<MlHealthCheck> {
     }
 
     return {
-      status: parsed.data.status === "healthy" ? "up" : parsed.data.status === "degraded" ? "degraded" : "down",
+      // A process that answers /health without a loaded model is reachable,
+      // but cannot serve predictions. Keep readiness distinct from liveness.
+      status: parsed.data.status === "healthy" && parsed.data.modelLoaded
+        ? "up"
+        : parsed.data.status === "unhealthy" || !parsed.data.modelLoaded
+          ? "down"
+          : "degraded",
       latencyMs,
       modelVersion: parsed.data.modelVersion,
       modelLoaded: parsed.data.modelLoaded,

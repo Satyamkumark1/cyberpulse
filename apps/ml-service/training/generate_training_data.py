@@ -123,9 +123,11 @@ def _generate_candidate_cells(
     busiest cash-out cells, capped at CANDIDATE_CAP (ai/model-selection.md
     §2.1). A cash-out outside this set cannot be predicted at all — the
     documented recall ceiling, not a bug in this function."""
-    disk = set(h3.grid_disk(victim_h3, K_RING))
-    historical = set(top_cells_by_state.get(complaint_state, [])[:HISTORICAL_TOP_N])
-    ordered = list(disk) + [c for c in historical if c not in disk]
+    # Set iteration is deliberately excluded from selection policy.
+    disk = sorted(h3.grid_disk(victim_h3, K_RING))
+    disk_set = set(disk)
+    historical = sorted(set(top_cells_by_state.get(complaint_state, [])[:HISTORICAL_TOP_N]))
+    ordered = disk + [c for c in historical if c not in disk_set]
 
     cells = []
     for h3_index in ordered[:CANDIDATE_CAP]:
@@ -237,10 +239,14 @@ def build_dataset(conn: psycopg.Connection) -> pd.DataFrame:
         withdrawals_by_state = withdrawals_before_complaint.merge(
             atms[["id", "state"]], left_on="atm_id", right_on="id", how="inner"
         )
-        top_cells_by_state = {
-            state: group["h3_r8"].value_counts().index.tolist()
-            for state, group in withdrawals_by_state.groupby("state")
-        }
+        top_cells_by_state = {}
+        for state, group in withdrawals_by_state.groupby("state"):
+            counts = group["h3_r8"].value_counts().rename_axis("h3").reset_index(name="count")
+            top_cells_by_state[state] = (
+                counts.sort_values(["count", "h3"], ascending=[False, True], kind="stable")["h3"]
+                .head(HISTORICAL_TOP_N)
+                .tolist()
+            )
         candidates = _generate_candidate_cells(
             complaint.victim_h3_r8, complaint.city, complaint.district, complaint.state,
             # Historical features must be point-in-time: a complaint cannot
@@ -258,6 +264,11 @@ def build_dataset(conn: psycopg.Connection) -> pd.DataFrame:
                 complaint_id=complaint.complaint_id, h3_index=cell.h3_index,
                 y=1 if cell.h3_index in true_cells else 0, split=split,
                 hours_to_withdrawal=hours_to_withdrawal,
+                # Candidate metadata is retained so evaluation can invoke the
+                # same composite scorer as serving rather than ranking only
+                # by classifier probability.
+                cell_lat=cell.lat, cell_lon=cell.lon, cell_atm_count=cell.atm_count,
+                cell_atm_density=cell.atm_density, cell_withdrawal_count=cell.withdrawal_count,
             )
             rows.append(row)
 

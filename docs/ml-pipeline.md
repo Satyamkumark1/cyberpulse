@@ -33,6 +33,7 @@ python scripts/evaluation/pii_scan.py           # must find nothing
 pnpm db:seed                                    # verifies manifest checksums
 pnpm train:model                                # risk + temporal, calibrated
 pnpm evaluate                                   # gates; writes model_metrics
+make promote                                    # promote the gate-passing staged bundle
 ```
 
 `make setup` runs all of it.
@@ -44,7 +45,7 @@ pnpm evaluate                                   # gates; writes model_metrics
 | Model | Task | Output |
 |---|---|---|
 | Risk | Binary classification over (complaint × candidate cell) pairs | Calibrated probability |
-| Hotspot engine | Unsupervised — H3 k-ring + historical, DBSCAN, KDE | Ranked candidates |
+| Hotspot engine | H3 k-ring + historical candidate generation and weighted ranking; DBSCAN/KDE are offline helpers and are not served ranking inputs | Ranked candidates |
 | Temporal | Multiclass over twelve 2-hour bins | Bounded window ≤ 4 h |
 
 Plus exact SHAP (TreeExplainer) on the **top cell only** — explaining all sixty would cost ~4.2 s for information nobody reads.

@@ -39,3 +39,15 @@ def test_reports_loaded_with_version_from_the_artifacts_when_all_four_files_exis
     assert state.model_version == "CyberPulse-Demo-v1"
     assert state.feature_schema_version == "fs-1"
     assert state.loaded_at is not None
+
+
+@pytest.mark.unit
+def test_reports_unloaded_when_metadata_is_corrupt(tmp_path):
+    for name in ("risk_model.joblib", "temporal_model.joblib"):
+        (tmp_path / name).write_bytes(b"stub")
+    (tmp_path / "feature_schema.json").write_text("not-json")
+    (tmp_path / "model_card.json").write_text(json.dumps({"modelVersion": "v1"}))
+
+    state = load_artifacts(str(tmp_path))
+
+    assert state.model_loaded is False
