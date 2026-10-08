@@ -76,9 +76,9 @@ That last line is worth the three seconds. It pre-empts the objection a governme
 
 *Screen: prediction panel; map zooms to the hotspot.*
 
-> "Sector 18, Noida. Ninety-one point seven percent. Three ATMs in that cell.
+> "The current prediction names [read the returned locality]. The risk level is [read the returned level], with [read the returned ATM count] nearby ATMs.
 >
-> And it doesn't just give one answer — there's a ranked list. Gurugram second, Dwarka third. If the first deployment comes up empty, the officer already has the next option.
+> And it doesn't just give one answer — there's a ranked list. If the first location is not actionable, the officer already has the next option.
 >
 > Expected window: two in the afternoon to four. That's what makes it a deployment rather than an indefinite stakeout."
 
@@ -88,9 +88,9 @@ That last line is worth the three seconds. It pre-empts the objection a governme
 
 *Expand the factor panel.*
 
-> "This is the part that matters most. Transaction velocity, twenty-seven percent. Historical hotspot, twenty-two. Linked account pattern, nineteen. ATM proximity, fourteen.
+> "This is the part that matters most. Read the top returned factors and their relative contributions; do not memorise values from an earlier run.
 >
-> These are exact Shapley values from the model that produced the score — not an after-the-fact story. An officer can read this to a supervisor. A supervisor can disagree with it.
+> These are relative Shapley contributions from the served classifier, not an after-the-fact story and not a calibrated cash-out probability. An officer can read them to a supervisor. A supervisor can disagree with the model.
 >
 > And if we can't produce an explanation, we say so. We never show a score and pretend it's explained."
 
@@ -100,19 +100,19 @@ Thirty-five seconds is the longest block in the script, deliberately. Explainabi
 
 ### Step 6 · The action — 25 s
 
-*Click Generate Alert.*
+*Click **Queue Internal Alert**.*
 
-> "Intelligence that stays in a dashboard isn't intelligence. Location, window, risk, exposure, top factors — pre-filled. The officer picks recipients: their own unit, the banks, I4C."
+> "Intelligence that stays in a dashboard is easy to miss. Location, window, risk, exposure and top factors are pre-filled. This prototype queues an internal alert for authorised prototype roles; it does not contact a bank, I4C or any external system."
 
-*Send.*
+*Confirm the queue action.*
 
-> "Sent. It's now on the dashboard, in the alerts queue, and on the case timeline — with an audit record of who sent it and when. The bank officer can acknowledge it from their own view."
+> "Queued. It is now in the internal alerts queue and on the case timeline, with an audit record of who queued it and when. An authorised prototype user can acknowledge it from their own view."
 
 ---
 
 ### Closing — 10 s
 
-> "Complaint to dispatched intelligence in five clicks.
+> "Complaint to an internally queued decision-support alert in five clicks.
 >
 > To be clear about what this is: synthetic data, a prototype, decision support. It predicts locations and time windows, never people. It never acts on its own. And our published accuracy figures are measured on synthetic data — we're not claiming real-world performance we can't demonstrate."
 
@@ -126,10 +126,10 @@ Run it before the Opening when the slot allows, or on its own when an evaluator 
    > "A citizen gets a 'digital arrest' call. Three red flags, each with the reason and the public advisory it comes from — and no score. A person deciding whether to hang up needs reasons, not a probability."
 2. **`/safety/report`.** Show 1930 first, then file Delhi, UPI fraud, any amount. Read out the complaint ID; do not read the tracking code aloud.
    > "Someone who already paid is sent to 1930 first. The form asks three things and nothing personal. And it says plainly that this prototype does not forward the report."
-3. **Officer side (LEA).** Open the new `C-9####` in Complaints; Analyze; Generate Alert.
+3. **Officer side (LEA).** Open the new `C-9####` in Complaints; Analyze; Queue Internal Alert.
    > "The same report, in the officer queue, through the same model. It has no transaction trail yet, so the model says how confident it is — and that is what it shows."
 4. **Back on the phone, `/safety/status`.** Enter the ID and code.
-   > "The citizen sees 'Alert sent to bank and police' — and nothing about where or when. That stays with the police."
+   > "The citizen sees that the report reached the prototype's internal workflow — and nothing about where or when. Prediction details stay with the officer view."
 
 **Reset Demo** clears every citizen report along with the demo alerts.
 
@@ -160,7 +160,7 @@ Stop. Reset. Reload. Do not explain it away.
 | Action | 25 | 180 |
 | Closing | 10 | 190* |
 
-\* Overlaps with the alert confirmation rendering. Rehearsed total: 180 s.
+\* The scripted narration sums to 190 seconds. The release gate is a ≤180-second run, so the presenter must overlap the closing with the alert confirmation or trim narration. Record the observed time; do not call an unmeasured run rehearsed.
 
 **If it runs long, cut narration — never a step.** The chain is the product; removing a link demonstrates something lesser.
 

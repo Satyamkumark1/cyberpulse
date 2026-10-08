@@ -26,8 +26,13 @@ def load_artifacts(model_dir: str) -> ArtifactState:
     if not (risk_model.exists() and temporal_model.exists() and feature_schema.exists() and model_card.exists()):
         return ArtifactState(model_loaded=False, model_version=None, feature_schema_version=None, loaded_at=None)
 
-    schema = json.loads(feature_schema.read_text())
-    card = json.loads(model_card.read_text())
+    try:
+        schema = json.loads(feature_schema.read_text())
+        card = json.loads(model_card.read_text())
+        if not schema.get("version") or not card.get("modelVersion"):
+            raise ValueError("artifact metadata is incomplete")
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        return ArtifactState(model_loaded=False, model_version=None, feature_schema_version=None, loaded_at=None)
     return ArtifactState(
         model_loaded=True,
         model_version=card.get("modelVersion"),

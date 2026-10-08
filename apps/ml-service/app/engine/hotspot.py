@@ -1,7 +1,8 @@
 """Spatial hotspot engine (FEAT-07, ai/model-selection.md §2). Ranks the
-candidate cells the web application assembled, using DBSCAN to detect
-whether they form a real density cluster and a documented weighted blend —
-the model's probability as the dominant term — to produce the final order.
+ candidate cells the web application assembled with a documented weighted
+ blend. DBSCAN/KDE helpers remain available for offline analysis; they do not
+ alter the served ranking unless their output is explicitly integrated and
+ evaluated.
 """
 
 import math

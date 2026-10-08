@@ -914,8 +914,8 @@ function AlertListStep({
     <section className="space-y-3 rounded-sm border border-slate-200 p-4">
       <h2 className="text-base font-semibold text-slate-800">Alert</h2>
       <p className="text-sm text-slate-600">
-        Generate an alert from any complaint&apos;s prediction to notify LEA and BANK. Sending is a
-        human decision, per complaint.
+        Queue an internal alert from any complaint&apos;s prediction for authorised prototype roles.
+        Queueing is a human decision, per complaint; no external notification is sent.
       </p>
       <ul className="divide-y divide-slate-100">
         {rows.map((row) => {
@@ -924,14 +924,14 @@ function AlertListStep({
             <li key={row.complaintId} className="flex flex-wrap items-center justify-between gap-2 py-2">
               <span className="font-mono text-sm text-slate-800">{row.complaintId}</span>
               {dispatchedId ? (
-                <span role="status" className="text-sm text-emerald-700">Alert {dispatchedId} dispatched.</span>
+                <span role="status" className="text-sm text-emerald-700">Internal alert {dispatchedId} queued.</span>
               ) : row.prediction.data ? (
                 <button
                   type="button"
                   onClick={() => onOpenAlert(row.complaintId)}
                   className="rounded-sm bg-red-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-800"
                 >
-                  Generate Alert
+                  Queue Internal Alert
                 </button>
               ) : (
                 <span className="text-sm text-slate-500">Not yet analysed</span>
@@ -1103,10 +1103,10 @@ function RunSummaryRow({ row, dispatchedAlertId }: { row: DemoRow; dispatchedAle
         <SummaryStage n={6} title={STEPS[5]}>
           {dispatchedAlertId ? (
             <p className="text-sm text-slate-800">
-              Alert <span className="font-mono">{dispatchedAlertId}</span> dispatched.
+              Internal alert <span className="font-mono">{dispatchedAlertId}</span> queued.
             </p>
           ) : (
-            <p className="text-sm text-slate-600">Not dispatched. Sending an alert is a human decision.</p>
+            <p className="text-sm text-slate-600">Not queued. Queueing an internal alert is a human decision.</p>
           )}
         </SummaryStage>
       </ol>

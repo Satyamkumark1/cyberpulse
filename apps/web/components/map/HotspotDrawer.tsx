@@ -75,7 +75,7 @@ export function HotspotDrawer({ h3Index, onClose, embedded = false }: { h3Index:
                   onClick={() => setIsAlertModalOpen(true)}
                   className="rounded-sm bg-red-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-700"
                 >
-                  Generate Alert
+                  Queue Internal Alert
                 </button>
               ) : null}
             </div>

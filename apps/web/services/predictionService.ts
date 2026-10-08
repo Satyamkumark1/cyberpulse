@@ -1,5 +1,5 @@
 import { db, dbSchema } from "@cyberpulse/db";
-import { and, desc, eq, inArray, lt, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, lte, lt, sql } from "drizzle-orm";
 import type { MlPredictRequest } from "@cyberpulse/shared/zod/ml-predict-request";
 import type { MlPredictResponse } from "@cyberpulse/shared/zod/ml-predict-response";
 import type { PredictionResponse } from "@cyberpulse/shared/zod/prediction";
@@ -104,7 +104,8 @@ export async function predict(input: PredictInput, ctx: RequestContext): Promise
       toAccountId: transactions.toAccountId,
     })
     .from(transactions)
-    .where(eq(transactions.complaintId, complaint.id))
+    // A historical forecast is frozen at the complaint observation time.
+    .where(and(eq(transactions.complaintId, complaint.id), lte(transactions.timestamp, complaint.complaintTimestamp)))
     .orderBy(transactions.hopIndex)
     .limit(500);
 
@@ -113,33 +114,47 @@ export async function predict(input: PredictInput, ctx: RequestContext): Promise
     ? await db.select().from(accounts).where(inArray(accounts.id, accountIds))
     : [];
 
-  const accountPayloads = await Promise.all(
-    chainAccounts.map(async (account) => {
-      const [priorFlags] = await db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(transactions)
-        .where(
-          and(
-            sql`(${transactions.fromAccountId} = ${account.id} OR ${transactions.toAccountId} = ${account.id})`,
-            sql`${transactions.riskIndicator} <> 'NONE'`,
-            lt(transactions.timestamp, complaint.complaintTimestamp),
-          ),
-        );
-      const [priorWithdrawals] = await db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(withdrawals)
-        .where(and(eq(withdrawals.accountId, account.id), lt(withdrawals.timestamp, complaint.complaintTimestamp)));
+  // These histories are features for every account in the chain. Aggregate
+  // once per relation instead of issuing two queries per account (which made
+  // a large chain fan out into an N+1 query pattern). The UNION preserves the
+  // original OR semantics and removes a self-transfer duplicate by id.
+  const [priorFlagsResult, priorWithdrawals] = accountIds.length
+    ? await Promise.all([
+        db.execute<{ accountId: number; count: number }>(sql`
+          SELECT account_id AS "accountId", count(*)::int AS count
+          FROM (
+            SELECT id, from_account_id AS account_id
+            FROM transactions
+            WHERE from_account_id IN (${sql.join(accountIds.map((id) => sql`${id}`), sql`, `)})
+              AND risk_indicator <> 'NONE'
+              AND timestamp < ${complaint.complaintTimestamp}
+            UNION
+            SELECT id, to_account_id AS account_id
+            FROM transactions
+            WHERE to_account_id IN (${sql.join(accountIds.map((id) => sql`${id}`), sql`, `)})
+              AND risk_indicator <> 'NONE'
+              AND timestamp < ${complaint.complaintTimestamp}
+          ) AS account_flags
+          GROUP BY account_id
+        `),
+        db
+          .select({ accountId: withdrawals.accountId, count: sql<number>`count(*)::int` })
+          .from(withdrawals)
+          .where(and(inArray(withdrawals.accountId, accountIds), lt(withdrawals.timestamp, complaint.complaintTimestamp)))
+          .groupBy(withdrawals.accountId),
+      ])
+    : [[], []] as const;
+  const priorFlags = new Map((priorFlagsResult as Array<{ accountId: number; count: number }>).map((row) => [row.accountId, row.count]));
+  const priorWithdrawalCounts = new Map(priorWithdrawals.map((row) => [row.accountId, row.count]));
 
-      return {
-        accountId: account.accountId,
-        accountType: account.accountType,
-        openedAt: account.openedAt,
-        riskScore: account.riskScore,
-        priorSuspiciousFlags: priorFlags?.count ?? 0,
-        priorWithdrawalCount: priorWithdrawals?.count ?? 0,
-      };
-    }),
-  );
+  const accountPayloads = chainAccounts.map((account) => ({
+    accountId: account.accountId,
+    accountType: account.accountType,
+    openedAt: account.openedAt,
+    riskScore: account.riskScore,
+    priorSuspiciousFlags: priorFlags.get(account.id) ?? 0,
+    priorWithdrawalCount: priorWithdrawalCounts.get(account.id) ?? 0,
+  }));
 
   const candidateCells = await candidatesForComplaint(
     complaint.victimH3R8,
@@ -174,8 +189,14 @@ export async function predict(input: PredictInput, ctx: RequestContext): Promise
   };
 
   const mlResponse: MlPredictResponse = await callPredict(mlRequest, ctx.requestId);
+  const predictedCandidate = candidateCells.find((candidate) => candidate.h3Index === mlResponse.predictedLocation.h3Index);
+  const historicalFrequency = predictedCandidate?.historicalHotspotScore ?? 0;
 
   const { hotspot, prediction, factors } = await db.transaction(async (tx) => {
+    // Alert creation takes the same complaint-scoped advisory lock before it
+    // validates freshness. Serialize prediction publication with alert
+    // creation so a just-created refresh cannot supersede an alert mid-check.
+    await tx.execute(sql`select pg_advisory_xact_lock(${complaint.id})`);
     const [hotspotRow] = await tx
       .insert(hotspots)
       .values({
@@ -191,7 +212,7 @@ export async function predict(input: PredictInput, ctx: RequestContext): Promise
         expectedStart: mlResponse.expectedWindow.start,
         expectedEnd: mlResponse.expectedWindow.end,
         likelyAtmCount: mlResponse.likelyAtms,
-        historicalFrequency: mlResponse.riskScore,
+        historicalFrequency,
         lastRefreshedAt: new Date().toISOString(),
       })
       .onConflictDoUpdate({
@@ -202,6 +223,7 @@ export async function predict(input: PredictInput, ctx: RequestContext): Promise
           expectedStart: mlResponse.expectedWindow.start,
           expectedEnd: mlResponse.expectedWindow.end,
           likelyAtmCount: mlResponse.likelyAtms,
+          historicalFrequency,
           lastRefreshedAt: new Date().toISOString(),
         },
       })

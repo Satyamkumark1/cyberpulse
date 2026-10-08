@@ -25,12 +25,12 @@ It is **decision support**. It predicts locations and time windows, never people
 
 ## This repository
 
-Phase 1 produced the **complete documentation blueprint** — 148 documents written before any application code. Phase 2 (Infrastructure & Data Foundation) has since built the monorepo the blueprint describes: schema, synthetic data pipeline, service skeletons and CI. See `CHANGELOG.md` for what each phase actually shipped.
+Phase 1 produced the documentation blueprint; the current repository contains the implemented web, ML, safety and demonstration workflow. See `CHANGELOG.md` and the phase notes for what each phase actually shipped and what remains a manual release check.
 
 ```
 ├── apps/
 │   ├── web/             Next.js — shell, API route handlers, services
-│   └── ml-service/       FastAPI — health, artefact loading (engine/ arrives with FEAT-01 in P3)
+│   └── ml-service/       FastAPI — health, feature computation, prediction and explanations
 ├── packages/
 │   ├── db/               Drizzle schema (16 tables), migrations, seed pipeline
 │   ├── shared/            JSON Schema → Zod + Pydantic; enums; constants
@@ -79,7 +79,7 @@ Browser ──▶ Next.js (UI · API · services · all persistence)
 |---|---|
 | Web | Next.js App Router · TypeScript · Tailwind · shadcn/ui · Recharts · React Flow · MapLibre |
 | Data | Neon PostgreSQL · Drizzle ORM · H3 spatial indexing |
-| ML | FastAPI · XGBoost · scikit-learn (DBSCAN, KDE) · SHAP |
+| ML | FastAPI · XGBoost · scikit-learn · SHAP |
 | Testing | Vitest · Playwright · pytest · k6 · axe-core |
 | Deploy | Vercel · Render/Railway/Fly · Docker Compose for local parity |
 
@@ -129,9 +129,9 @@ Two pipeline gates are non-bypassable: `signal_check.py` must confirm the synthe
 
 Open `/dashboard` and click **RUN DEMO SCENARIO**, or go to `/demo` for the guided six-step flow:
 
-complaint `C-10284` → money-trail graph → live AI analysis → predicted hotspot → SHAP explanation → dispatched alert.
+complaint `C-10284` → money-trail graph → live AI analysis → predicted hotspot → explanation → internal alert queue.
 
-Three minutes, end to end, against the real prediction service. `docs/demo-script.md` is the narrated version.
+The narrated flow is designed for a three-minute run against the live prediction service. It queues an internal prototype alert; it does not send email, SMS or an external agency notification. `docs/demo-script.md` is the narrated version.
 
 ---
 
@@ -142,18 +142,18 @@ Three tabular models and exact SHAP. **No LLM anywhere in the prediction path** 
 | Model | Task |
 |---|---|
 | Risk | XGBoost binary classifier over (complaint × candidate cell) pairs |
-| Hotspot engine | H3 candidate generation · DBSCAN clustering · KDE surface · combined ranking |
+| Hotspot engine | H3 candidate generation · weighted candidate ranking · DBSCAN/KDE helpers for offline analysis only |
 | Temporal | Multiclass over twelve 2-hour bins → a window of at most 4 hours |
 
-Explanations are exact Shapley values from the served model, aggregated into officer-readable factors normalised to 100%.
+Explanations are exact Shapley values from the served classifier, aggregated into officer-readable relative factors normalised to 100% when non-zero. They explain the classifier output, not the final blended ranking score or a calibrated cash-out probability.
 
-Gates are release-blocking: ROC-AUC ≥ 0.85, top-3 hit rate ≥ 0.72, ECE ≤ 0.10, and eight others. `evaluate.py` exits non-zero below any of them, and **the gate is never lowered to accommodate a model** (DEC-004).
+The evaluator has release gates including ROC-AUC ≥ 0.85, top-3 hit rate ≥ 0.72 and ECE ≤ 0.10; it exits non-zero below any gate, and **the gate is never lowered to accommodate a model** (DEC-004). The currently published model-card metrics are historical synthetic-artifact observations and are not presented as a newly verified complete served-pipeline result.
 
 ---
 
 ## Responsible use
 
-- All data is **synthetic**. The schema has no column for a name, address, phone number, email, government identifier or real account number — so it cannot hold personal data, not merely does not.
+- All data is **synthetic**. The structured schema has no dedicated name, address, phone number, email, government identifier or real account-number fields; free-text notes and user-entered alert/report text still require synthetic-only use and appropriate handling.
 - The system produces **risk indications about locations and time windows**, never determinations about individuals.
 - Account language is limited to "Mule Account", "Suspicious Account" and "Risk Indicator", enforced by a CI scan.
 - Every prediction carries confidence, ranked alternatives and named factors.

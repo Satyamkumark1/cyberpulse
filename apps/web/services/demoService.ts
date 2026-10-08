@@ -2,6 +2,7 @@ import { db, dbSchema } from "@cyberpulse/db";
 import { and, eq, inArray, ne, notExists, or, sql } from "drizzle-orm";
 import { requireAdminOrDemo, type RequestContext } from "./lib/auth";
 import type { DbTransaction } from "./auditService";
+import * as auditService from "./auditService";
 
 const { alerts, complaints, investigations, predictions } = dbSchema;
 
@@ -85,10 +86,21 @@ export async function reset(ctx: RequestContext): Promise<DemoResetCounts> {
     const deletedInvestigations = await tx.delete(investigations).where(eligibleInvestigations()).returning({ id: investigations.id });
     await tx.delete(predictions).where(inArray(predictions.complaintId, demoComplaintIds()));
     const deletedComplaints = await tx.delete(complaints).where(eq(complaints.origin, "DEMO")).returning({ id: complaints.id });
-    return {
+    const counts = {
       alertsCleared: deletedAlerts.length,
       investigationsCleared: deletedInvestigations.length,
       complaintsCleared: deletedComplaints.length,
     };
+    // Reset is a privileged destructive action. The event is in the same
+    // transaction, so a rollback cannot leave an audit claim for a failed
+    // reset and a successful reset cannot be unaudited.
+    await auditService.record(tx, {
+      actorRole: ctx.role,
+      action: "DEMO_RESET",
+      subjectType: "demo_reset",
+      subjectId: 0,
+      metadata: counts,
+    });
+    return counts;
   });
 }

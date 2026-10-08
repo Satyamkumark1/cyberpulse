@@ -20,6 +20,7 @@ export function PredictionPanel({ complaintId, initialPrediction }: PredictionPa
   const mutation = usePrediction(complaintId);
 
   const prediction = mutation.data ?? initialPrediction;
+  const refreshFailedWithOlderResult = Boolean(mutation.isError && initialPrediction && !mutation.data);
 
   return (
     <section aria-labelledby="prediction-heading" className="rounded-sm border border-slate-200 p-4">
@@ -28,13 +29,13 @@ export function PredictionPanel({ complaintId, initialPrediction }: PredictionPa
           Prediction
         </h2>
         <div className="flex items-center gap-2">
-          {prediction && !mutation.isPending ? (
+          {prediction && !mutation.isPending && !refreshFailedWithOlderResult ? (
             <button
               type="button"
               onClick={() => setIsAlertModalOpen(true)}
               className="rounded-sm bg-red-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
             >
-              Generate Alert
+              Queue Internal Alert
             </button>
           ) : null}
           <button
@@ -49,6 +50,11 @@ export function PredictionPanel({ complaintId, initialPrediction }: PredictionPa
       </div>
 
       <div aria-live="polite" className="mt-4">
+        {refreshFailedWithOlderResult ? (
+          <div className="mb-3 rounded-sm border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900" role="alert">
+            Refresh failed. The result below is historical and cannot be used to queue a current alert.
+          </div>
+        ) : null}
         {mutation.isPending ? (
           <StatePanel state="loading" title="Running prediction" message="Scoring candidate locations." />
         ) : mutation.isError ? (
@@ -161,10 +167,12 @@ export function PredictionSummary({
               {prediction.rankedHotspots.map((h) => {
                 const isSelected = (selectedH3 ?? prediction.predictedLocation.h3Index) === h.h3Index;
                 return (
-                  <li
-                    key={h.h3Index}
+                  <li key={h.h3Index}>
+                    <button
+                    type="button"
                     onClick={() => setSelectedH3(h.h3Index)}
-                    className={`flex cursor-pointer items-start justify-between gap-2 p-3 transition-colors ${
+                    aria-pressed={isSelected}
+                    className={`flex w-full items-start justify-between gap-2 p-3 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-blue-600 ${
                       isSelected
                         ? "border-l-4 border-blue-600 bg-blue-50/60"
                         : "hover:bg-slate-50"
@@ -187,14 +195,15 @@ export function PredictionSummary({
                         {h.h3Index} · {h.lat.toFixed(5)}, {h.lon.toFixed(5)}
                       </span>
                     </span>
-                    <div className="text-right">
+                    <span className="text-right">
                       <span className="font-mono text-xs font-semibold text-slate-700">
                         {formatScorePercent(h.score)}
                       </span>
                       <span className="block text-[10px] text-slate-400">
                         {h.likelyAtms} ATMs
                       </span>
-                    </div>
+                    </span>
+                    </button>
                   </li>
                 );
               })}
@@ -239,7 +248,7 @@ export function PredictionFactors({ prediction }: { prediction: PredictionRespon
         <p className="text-sm text-slate-600">Explanation could not be generated for this prediction.</p>
       ) : (
         <>
-          <p className="mt-1 text-xs text-slate-500">Contributions sum to 100% of the {prediction.riskLevel} risk score.</p>
+          <p className="mt-1 text-xs text-slate-500">Relative SHAP contributions to the underlying classifier output; they do not decompose the blended ranking score.</p>
           <ul className="mt-1 divide-y divide-slate-100">
             {prediction.factors.map((f) => (
               <FactorBar key={f.name} name={f.name} contribution={f.contribution} direction={f.direction} />
@@ -247,9 +256,6 @@ export function PredictionFactors({ prediction }: { prediction: PredictionRespon
           </ul>
         </>
       )}
-      {prediction.clusteringFallback ? (
-        <p className="mt-1 text-xs text-slate-500">Clustering fallback — hotspot ranking used H3 aggregation alone.</p>
-      ) : null}
     </div>
   );
 }

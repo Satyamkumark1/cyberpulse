@@ -42,7 +42,7 @@ export default async function AlertsPage({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-slate-800">Alerts</h1>
-          <p className="mt-1 text-sm text-slate-600">All dispatched alerts, newest first.</p>
+          <p className="mt-1 text-sm text-slate-600">All internal alert records, newest first.</p>
         </div>
         {result && (
           <span className="text-sm text-slate-500">

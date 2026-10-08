@@ -30,7 +30,7 @@ async function fetchRecentAlerts(): Promise<AlertListResponse> {
 
 /**
  * Live recent-alerts panel with query invalidation (AC-011-05, T-5.10).
- * Displays recently dispatched alerts and updates live when an alert is created.
+ * Displays recently queued internal alerts and updates live when an alert is created.
  */
 export function RecentAlertsPanel() {
   const { data, isLoading, isError, refetch } = useQuery({
@@ -58,7 +58,7 @@ export function RecentAlertsPanel() {
         ) : isError ? (
           <StatePanel state="error" message="Unable to load alerts." onRetry={() => refetch()} />
         ) : alerts.length === 0 ? (
-          <StatePanel state="empty" message="No alerts have been dispatched yet." />
+          <StatePanel state="empty" message="No internal alerts have been queued yet." />
         ) : (
           <ul className="space-y-2">
             {alerts.map((a) => (

@@ -15,6 +15,9 @@ interface Bucket {
 }
 
 const buckets = new Map<string, Bucket>();
+const MAX_BUCKETS = 10_000;
+const CLEANUP_INTERVAL_MS = 1_000;
+let nextCleanupAt = 0;
 
 export interface RateLimitConfig {
   limit: number;
@@ -23,6 +26,20 @@ export interface RateLimitConfig {
 
 function checkRateLimit(key: string, config: RateLimitConfig): { allowed: boolean; retryAfterSeconds: number } {
   const now = Date.now();
+  // Requests can introduce unbounded keys (for example, spoofed forwarded
+  // addresses). Cleanup is periodic so ordinary requests do not scan the
+  // entire map; an expired entry is also replaced lazily when its key returns.
+  if (now >= nextCleanupAt) {
+    for (const [bucketKey, value] of buckets) {
+      if (value.resetAt <= now) buckets.delete(bucketKey);
+    }
+    nextCleanupAt = now + CLEANUP_INTERVAL_MS;
+  }
+  if (buckets.size >= MAX_BUCKETS && !buckets.has(key)) {
+    // Preserve every active bucket. A new key waits for periodic expiry
+    // rather than evicting an existing caller's count under pressure.
+    return { allowed: false, retryAfterSeconds: Math.ceil(CLEANUP_INTERVAL_MS / 1000) };
+  }
   const bucket = buckets.get(key);
 
   if (!bucket || bucket.resetAt <= now) {

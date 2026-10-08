@@ -54,13 +54,17 @@ class Factor(TypedDict):
 
 def to_factors(shap_values: list[float], feature_names: list[str]) -> list[Factor]:
     """Aggregate raw per-feature SHAP values into the closed factor set,
-    normalised so |contribution| sums to 100 ± 0.5 (AC-009-04), ordered by
-    descending absolute contribution."""
+    normalised so |contribution| sums to 100 ± 0.5 when non-zero, ordered by
+    descending absolute contribution. These are relative contributions to the
+    classifier output, not a decomposition of the final blended ranking
+    score or a calibrated probability."""
     grouped: dict[FactorName, float] = defaultdict(float)
     for name, value in zip(feature_names, shap_values, strict=True):
         grouped[FACTOR_MAP[name]] += value
 
-    total = sum(abs(v) for v in grouped.values()) or 1.0
+    total = sum(abs(v) for v in grouped.values())
+    if total == 0:
+        return []
     factors: list[Factor] = [
         {
             "name": name,

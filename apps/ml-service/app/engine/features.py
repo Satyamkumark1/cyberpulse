@@ -148,17 +148,20 @@ def build_vector(
     """
     values: dict[str, float] = dict(FEATURE_DEFAULTS)
 
-    if transactions:
-        values["txn_amount_total"] = float(sum(t.amount_paise for t in transactions))
+    # Historical forecasts may only use information available at the
+    # observation timestamp (the complaint timestamp).
+    observed_transactions = [t for t in transactions if t.timestamp <= complaint.timestamp]
+    if observed_transactions:
+        values["txn_amount_total"] = float(sum(t.amount_paise for t in observed_transactions))
 
-        window_end = complaint.timestamp.timestamp() + 3600
+        window_start = complaint.timestamp.timestamp() - 3600
         values["txn_velocity_1h"] = float(
-            sum(1 for t in transactions if complaint.timestamp.timestamp() <= t.timestamp.timestamp() < window_end)
+            sum(1 for t in observed_transactions if window_start <= t.timestamp.timestamp() <= complaint.timestamp.timestamp())
         )
 
-        values["linked_depth"] = float(max(t.hop_index for t in transactions) + 1)
+        values["linked_depth"] = float(max(t.hop_index for t in observed_transactions) + 1)
 
-        latest_txn_ts = max(t.timestamp.timestamp() for t in transactions)
+        latest_txn_ts = max(t.timestamp.timestamp() for t in observed_transactions)
         values["recency_hours"] = max(0.0, (complaint.timestamp.timestamp() - latest_txn_ts) / 3600)
 
     if accounts:

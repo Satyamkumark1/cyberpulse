@@ -25,6 +25,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     start = time.monotonic()
     app.state.artifacts = load_artifacts(settings.MODEL_DIR)
     app.state.prediction = load_prediction_artifacts(settings.MODEL_DIR)
+    if app.state.prediction is None:
+        # Readiness must reflect the bundle that inference can actually load,
+        # not merely the presence of four files on disk.
+        app.state.artifacts.model_loaded = False
+        app.state.artifacts.model_version = None
+        app.state.artifacts.feature_schema_version = None
+        app.state.artifacts.loaded_at = None
     load_ms = round((time.monotonic() - start) * 1000)
     logger.info(
         "service start",

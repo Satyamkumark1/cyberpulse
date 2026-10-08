@@ -1,0 +1,785 @@
+CYBERPULSE AI - HACKATHON FIX IMPLEMENTATION PLAN
+Prepared: 8 October 2026
+Status: PROPOSED - implementation has not been authorized or started
+Basis: repository audit and runtime checks completed in this conversation
+
+======================================================================
+1. PURPOSE, SCOPE AND WORKING RULES
+======================================================================
+
+Objective
+---------
+Make the submission technically credible, internally consistent, accessible
+and reliable for a short synthetic-data demonstration. Correct predictive
+validity before adding features or strengthening performance claims.
+
+This document is a plan, not a record of completed fixes. Creating this
+document does not authorize code changes, dependency installation, data
+regeneration, model retraining, migrations, deployment or external messages.
+Wait for explicit implementation approval.
+
+Priorities
+----------
+P0: Submission blockers: prediction validity, truthful claims, security
+    defects, vulnerable dependencies and reproducible demo reliability.
+P1: Important completeness, usability and maintainability improvements.
+P2: Optional polish and pilot preparation.
+P3: Production hardening; outside the synthetic hackathon release.
+
+Execution rules once implementation is approved
+-----------------------------------------------
+- Preserve the existing uncommitted model/data changes. Establish a baseline
+  before regenerating anything; do not overwrite them without resolving
+  their intended status with the user.
+- Use an isolated test database for mutations, resets, migrations and E2E.
+- Read relevant REQUIREMENTS.md, FEATURE_SPECIFICATIONS.md,
+  ACCEPTANCE_CRITERIA.md, ADRs and .claude/rules before each work package.
+- Update requirements and decision records when deliberately narrowing a
+  promise. Do not silently remove a requirement to make a check pass.
+- Keep API/schema contracts in packages/shared; preserve the training
+  features.py symlink and the database-free ML serving boundary.
+- Write regression tests for substantive bugs and security changes.
+- Never invent predictions, pad explanations or lower release thresholds
+  merely to obtain a passing evaluation.
+- Publish synthetic-data limitations beside metrics. No real-data,
+  government-endorsement, external-delivery or financial-impact claims
+  without evidence.
+- Keep documentation, tests and implementation aligned in each change.
+
+======================================================================
+2. AUDIT BASELINE AND LIMITS
+======================================================================
+
+Verified during the audit:
+- 183 web unit tests across 17 files passed.
+- 53 Python tests passed.
+- Web TypeScript/ESLint and configured Python Ruff/mypy checks passed.
+- Next.js production build passed.
+- Synthetic signal, PII and hardcoded-value/terminology scans passed.
+- Desktop/mobile pages and selected read-only APIs worked.
+- Real ML artifacts loaded and three direct inference requests succeeded.
+- Production dependency audit reported two high and two moderate advisories.
+- Production UI reproduced mobile complaint overflow and Reports whitespace.
+
+Not established:
+- Full database-changing integration/E2E workflow.
+- Recomputed held-out model metrics for the complete served pipeline.
+- Hosted cold-start behavior, p95 load performance or memory compliance.
+- Full accessibility compliance or production security.
+- Official 2026 rubric/submission compliance or operational effectiveness.
+
+Existing metrics are observations from the current model card, not newly
+verified evaluation results. The present classifier top-3 hit rate is
+86.92%, versus 87.85% for historical frequency and 86.92% for logistic
+regression. These numbers must not be represented as the performance of
+the complete served ranking pipeline.
+
+======================================================================
+3. IMPLEMENTATION SEQUENCE
+======================================================================
+
+Stage A - Baseline and safety
+  Preserve working state; create isolated test configuration; record
+  environment, artifact hashes and current test results. Address dependency
+  advisories and role-scope defects.
+
+Stage B - Correct predictive semantics
+  Define observation time -> align candidate generation -> revise training
+  and serving inputs -> evaluate final pipeline -> correct score and
+  explanation presentation -> promote accepted artifacts.
+
+Stage C - Complete the workflow and UI
+  Apply expiry/replay rules; clarify internal alerts; complete filters,
+  settings, audit/reset behavior and hotspot aggregation semantics; fix
+  responsive and keyboard defects.
+
+Stage D - Release verification
+  Integrate real-service CI checks; run failure/concurrency/accessibility
+  tests; reconcile documentation; rehearse the exact submission build.
+
+Dependency chain:
+  F01 -> F02/F03 -> F04 -> F05/F06 -> F09 -> final release rehearsal
+  F07/F08/F11/F12/F13/F14 can proceed independently of model evaluation,
+  provided their contracts are coordinated with the baseline decisions.
+
+======================================================================
+4. DETAILED WORK PACKAGES
+======================================================================
+
+F01 - DEFINE OBSERVATION TIME AND REMOVE FUTURE-INFORMATION LEAKAGE
+Priority: P0 | Owner: ML + backend | Estimate: 1-3 engineer-days
+Dependencies: baseline preservation and agreed forecast semantics
+
+Evidence:
+- predictionService.ts fetches all linked transactions without a cutoff.
+- features.py counts velocity in the hour after complaint filing.
+- Audit counted 109 post-filing linked transactions across 72 complaints.
+
+Plan:
+1. Define an explicit observation/asOf timestamp. Default historical replay
+   to complaint time; any later replay must declare its observation time.
+2. Distinguish event time from information availability. In synthetic data,
+   document any assumption that records are immediately observable.
+3. Restrict transactions, account histories, withdrawal histories and graph
+   evidence to records available by the observation timestamp.
+4. Compute velocity over a trailing observation window. Anchor recency,
+   account age and forecast horizon to the same reference time.
+5. Use identical temporal semantics in training and serving.
+6. Exclude already-completed outcomes from future-event targets or introduce
+   an explicit no-future-event outcome. Do not force every case to have a
+   future cash-out prediction.
+7. Treat information from later observations as a new forecast, not a revised
+   account of what was knowable at filing time.
+
+Likely files:
+  apps/web/services/predictionService.ts
+  apps/web/services/hotspotService.ts
+  apps/web/services/transactionService.ts
+  apps/ml-service/app/engine/features.py
+  apps/ml-service/training/generate_training_data.py
+  packages/shared/schemas/*predict*.schema.json
+
+Acceptance:
+- Adding records after asOf cannot change that historical forecast.
+- Boundary timestamps, missing records and already-withdrawn cases have
+  explicit tested behavior.
+- Training/serving feature vectors agree for the same observed inputs.
+- UI/API identify the observation timestamp and forecast horizon.
+
+
+F02 - MAKE CANDIDATE GENERATION DETERMINISTIC AND CONSISTENT
+Priority: P0 | Owner: ML + backend | Estimate: 0.5-1 day
+Dependencies: F01 reference-time contract
+
+Plan:
+1. Specify one ordering: candidate source priority, historical frequency
+   order, then a stable H3 tie-breaker. Apply the cap after ordering.
+2. Remove Python set iteration as the selection policy.
+3. Match TypeScript/Python ordering, spatial resolution, historical cutoff,
+   fallback metadata and candidate cap.
+4. Record candidate-set version and candidate recall in evaluation outputs.
+
+Likely files:
+  apps/ml-service/training/generate_training_data.py
+  apps/web/services/hotspotService.ts
+  packages/shared/constants.ts
+
+Acceptance:
+- Identical ordered candidate IDs across Python and TypeScript fixtures.
+- Identical results across different PYTHONHASHSEED values.
+- Cases exceeding the cap and tied historical counts are tested.
+- Unreachable true locations remain in the evaluation denominator.
+
+
+F03 - EVALUATE THE EXACT SERVED PIPELINE
+Priority: P0 | Owner: ML | Estimate: 1.5-3 days
+Dependencies: F01, F02
+
+Plan:
+1. Extract reusable scoring/ranking logic so evaluation invokes the same
+   blend, candidate ordering and temporal-window selection as serving.
+2. Report classifier probability metrics separately from composite-score
+   ranking metrics. Do not apply classifier calibration results to the blend.
+3. Measure top-1/3/5 ranking, candidate recall, temporal coverage and joint
+   location-plus-window success at the actual selected location.
+4. Report lead-time distributions and the fraction of complaints with an
+   actionable future window; include missed and already-completed outcomes.
+5. Evaluate random, nearest-cell, historical-frequency and logistic baselines
+   with the same candidates, observation time, labels and denominators.
+6. Add complaint-level uncertainty estimates and failure examples. Use a
+   forward-time holdout; assess geography holdout if the corpus supports it.
+7. Keep a final test set untouched by model selection. Do not tune repeatedly
+   on the published holdout.
+8. Accept the simpler baseline if it performs as well or better. If the
+   claimed improvement is unsupported, narrow the submission claim.
+
+Likely files:
+  apps/ml-service/training/evaluate.py
+  apps/ml-service/training/train.py
+  apps/ml-service/app/routers/predict.py
+  apps/ml-service/app/engine/hotspot.py
+  apps/ml-service/models/model_card.json
+  ai/evaluation-framework.md
+
+Acceptance:
+- Evaluation and service return identical ranking/window outputs for a
+  shared fixture and artifact bundle.
+- Published metrics identify dataset, split, denominator, scorer and hashes.
+- Baselines and uncertainty appear alongside the main results.
+- Gate failures do not publish new production metrics/artifacts.
+- No stronger-than-measured predictive or financial-impact claim remains.
+
+
+F04 - CORRECT SCORE, CONFIDENCE AND SHAP PRESENTATION
+Priority: P0 | Owner: ML + frontend | Estimate: 0.5-1.5 days
+Dependencies: F03 scoring decision
+
+Plan:
+1. Recommended submission approach: keep the composite output explicitly
+   labelled as a ranking score, not a calibrated cash-out probability.
+2. Describe confidence as top-candidate score separation unless a separate
+   calibrated confidence method is implemented and evaluated.
+3. Label Tree SHAP factors as relative contributions to the underlying
+   classifier output. Disclose that normalized magnitudes do not decompose
+   the final blended score or its calibrated probability.
+4. Show the rule-based blend separately, including its weights, if retained.
+5. Remove the statement that factors sum to 100% of the displayed risk score.
+6. Preserve signed direction and avoid padding the explanation with fake
+   nonzero factors. Amend any conflicting minimum-factor wording through
+   the documented requirements/decision process.
+
+Likely files:
+  apps/ml-service/app/engine/explain.py
+  apps/ml-service/app/engine/risk.py
+  apps/web/components/prediction/PredictionPanel.tsx
+  apps/web/components/common/FactorBar.tsx
+  apps/web/components/demo/DemoWalkthrough.tsx
+
+Acceptance:
+- Every displayed percentage/score has an accurate definition.
+- The explanation identifies the function being explained.
+- Missing explanations and zero-contribution factors are honestly handled.
+- README, demo narration, model card and UI use consistent terminology.
+
+
+F05 - PREVENT STALE FORECASTS FROM APPEARING CURRENT
+Priority: P0 | Owner: backend + frontend | Estimate: 1-2 days
+Dependencies: F01, F04
+
+Plan:
+1. Separate historical replay from current analysis in API/UI state.
+2. Show full date, timezone, observation time, prediction creation time,
+   model version and forecast expiry.
+3. Remove implicit reuse from the command that runs a new prediction.
+   Keep historical results explicitly accessible as history.
+4. In current mode, reject expired/superseded alert sources server-side.
+   Historical demo alert recording must be explicitly marked as replay.
+5. On failed refresh, disable current-action controls for the failed run.
+   If an older result remains visible, label it historical and unavailable
+   for current dispatch rather than silently substituting it.
+6. Define behavior when crossing midnight and after new observations arrive.
+
+Likely files:
+  apps/web/services/predictionService.ts
+  apps/web/services/alertService.ts
+  apps/web/components/prediction/PredictionPanel.tsx
+  apps/web/components/alerts/AlertModal.tsx
+  apps/web/lib/formatters.ts
+
+Acceptance:
+- August replay cannot look like an October current forecast.
+- Midnight-spanning windows show both dates where necessary.
+- Stale prediction actions are rejected through the API, not just hidden.
+- Refresh failure cannot dispatch an unlabeled old forecast.
+
+
+F06 - ALIGN SPATIAL CLAIMS WITH IMPLEMENTED BEHAVIOR
+Priority: P0 for claims; P2 for extra algorithms
+Owner: ML + product | Estimate: 0.5-1 day for scope correction
+Dependencies: F03
+
+Plan:
+1. For the submission, describe the actual H3 candidate selection and
+   weighted ranking pipeline accurately.
+2. Do not call ranking an unsupervised discovery result when DBSCAN labels
+   are discarded. Do not describe the UI heatmap as output from the unused
+   Python KDE function.
+3. Remove misleading clustering-fallback copy; either explain its real
+   effect or omit it when it has no effect on the result.
+4. Update FR-08.1/FR-08.2 and related acceptance/ADR documents if deferring
+   historical-withdrawal clustering and KDE integration.
+5. If those requirements must remain, implement clustering over observed
+   withdrawal coordinates and integrate its evaluated outputs. Treat this
+   as an alternate scope requiring approximately 2-4 additional days and
+   a repeat of F03; do not add it only for algorithm count.
+
+Likely files:
+  apps/ml-service/app/engine/hotspot.py
+  apps/ml-service/app/routers/predict.py
+  apps/web/components/map/MapCanvas.tsx
+  apps/web/components/demo/DemoWalkthrough.tsx
+  REQUIREMENTS.md and ACCEPTANCE_CRITERIA.md
+
+Acceptance:
+- Architecture/demo claims correspond to components actually used.
+- Any remaining fallback message describes an observable behavior.
+
+
+F07 - FIX ROLE-SCOPED HOTSPOT DATA EXPOSURE
+Priority: P0 | Owner: backend | Estimate: 0.5-1 day
+Dependencies: isolated database and role visibility contract
+
+Plan:
+1. Define a minimal GUARD hotspot response containing only duty-coverage
+   information; exclude complaint IDs, fraud types, amounts and exposure.
+2. Apply BANK complaint scope before selecting related complaints and
+   associated prediction/exposure information.
+3. Use query predicates; preserve indistinguishable not-found behavior
+   for unavailable versus out-of-scope objects where applicable.
+4. Make page controls reflect capabilities while retaining API enforcement.
+5. Keep the selector visibly labelled as a prototype role. Do not disguise
+   it as authentication or claim production access control.
+
+Likely files:
+  apps/web/services/hotspotService.ts
+  apps/web/services/lib/auth.ts
+  apps/web/services/lib/scope.ts
+  apps/web/app/api/hotspots/[h3]/route.ts
+  apps/web/components/layout/Sidebar.tsx
+  apps/web/components/prediction/PredictionPanel.tsx
+
+Acceptance:
+- Direct GUARD API requests cannot retrieve complaint-linked information.
+- BANK responses contain only permitted related information.
+- Role tests cover APIs, totals/aggregates and direct URL navigation.
+- No reliance on sidebar visibility as a security control.
+
+
+F08 - RESOLVE DEPENDENCY ADVISORIES
+Priority: P0 | Owner: full-stack | Estimate: 0.5-1 day
+Dependencies: implementation authorization; baseline lockfile
+
+Audit-reported versions on 8 October 2026:
+- source-map-js 1.2.1: high advisory; patched range reported as >=1.2.2.
+- sharp 0.35.4: high advisory; patched range reported as >=0.35.5.
+- Next.js 15.5.25: two moderate advisories; patched range >=15.5.27.
+
+Plan:
+1. Recheck current advisories and compatible supported versions at execution.
+2. Assess application reachability without equating package presence with
+   demonstrated exploitability.
+3. Prefer compatible parent-dependency upgrades; use a documented override
+   only where appropriate and verified.
+4. Refresh the lockfile deliberately; review unrelated dependency churn.
+5. Run production and development dependency audits and the existing Python
+   audit mechanism when available. Do not silently skip a failing gate.
+
+Likely files:
+  apps/web/package.json
+  package.json
+  pnpm-lock.yaml
+  Python requirements files only if their audit identifies relevant issues
+
+Acceptance:
+- No unresolved high/critical dependency findings under the release policy.
+- Typechecks, unit tests, build and relevant runtime paths pass.
+- Version decisions and any accepted lower-severity risk are documented.
+
+
+F09 - ENFORCE REAL RELEASE GATES AND ARTIFACT PROVENANCE
+Priority: P0 | Owner: ML + DevOps | Estimate: 1-2 days
+Dependencies: F03, F08; isolated CI database
+
+Plan:
+1. Train into a staging directory rather than overwriting served artifacts.
+2. Evaluate that staged bundle. Promote it only after all required gates.
+3. Bundle model files, feature/candidate versions, model card, data/split
+   hashes and source revision together with immutable identifiers.
+4. Add CI jobs for complete scorer evaluation and a real web -> ML -> DB
+   -> UI workflow, including alert recording and acknowledgement.
+5. Retain mocked integration tests for deterministic failure cases, but
+   label them separately from real-service coverage.
+6. Add relevant Playwright, accessibility, performance and bundle-budget
+   gates. Run them against the production build where practical.
+7. Make make verify and CI agree on which checks constitute release approval.
+8. Restore/promote the previous accepted bundle as the rollback procedure.
+
+Likely files:
+  .github/workflows/ci.yml
+  Makefile
+  apps/ml-service/training/train.py
+  apps/ml-service/training/evaluate.py
+  apps/ml-service/app/core/model_loader.py
+  docker/Dockerfile.ml
+  apps/web/playwright.config.ts
+
+Acceptance:
+- A failed evaluation cannot replace the accepted serving bundle.
+- Packaged artifacts and displayed metrics identify the same bundle.
+- CI fails for real-service contract or journey breakage.
+- Build success is not labelled complete release verification.
+
+
+F10 - CLARIFY ALERT DELIVERY AND COMPLETE SETTINGS
+Priority: P1, delivery wording required before submission
+Owner: frontend + backend | Estimate: 0.5-1 day
+Dependencies: F05
+
+Plan:
+1. Replace external-sounding success text with internal prototype queue
+   wording. Explain that recipients are simulated role destinations.
+2. Distinguish internal acknowledgement from external bank/police receipt.
+3. Make alert title/severity wording match the actual risk level; reconcile
+   the current fixed HIGH-RISK title requirement through a decision record.
+4. Connect notification preferences to alert toasts and optional prediction
+   announcements, or remove/label nonfunctional preferences.
+5. Preserve essential error and accessibility feedback even if optional
+   completion announcements are disabled.
+6. Do not add real email/SMS or bank integrations to satisfy the demo label.
+
+Likely files:
+  apps/web/services/alertService.ts
+  apps/web/components/alerts/AlertModal.tsx
+  apps/web/components/settings/SettingsPanel.tsx
+  apps/web/services/settingsService.ts
+  apps/web/components/safety/StatusTimeline.tsx
+
+Acceptance:
+- No screen claims an external recipient received a prototype alert.
+- Notification settings produce an observable tested difference.
+- Citizen status language remains consistent with the non-delivery notice.
+
+
+F11 - COMPLETE COMPLAINT SEARCH, FILTERS AND SORTING
+Priority: P1 | Owner: frontend | Estimate: 0.5-1 day
+Dependencies: existing list service; F07 visibility rules
+
+Plan:
+1. Expose search by complaint ID/city, fraud type, status, risk, date range,
+   city/state and allowed sorting options.
+2. Preserve filters in the URL and pagination links; reset page on changes.
+3. Validate page/query inputs consistently for APIs and server-rendered pages.
+4. Add active-filter summary, clear controls and descriptive empty states.
+5. Keep controls usable at narrow widths and keyboard accessible.
+
+Likely files:
+  apps/web/app/(dashboard)/complaints/page.tsx
+  apps/web/app/api/complaints/route.ts
+  apps/web/services/complaintService.ts
+
+Acceptance:
+- A user can find C-10284 without manually navigating pages.
+- Combined filters and amount/risk sorting work through the UI.
+- Invalid pagination is handled without a database/internal error.
+- Out-of-scope filter options and counts are not exposed.
+
+
+F12 - COMPLETE AUDIT EVENTS AND DEFINE RESET SEMANTICS
+Priority: P1 | Owner: backend | Estimate: 0.5-1.5 days
+Dependencies: isolated database; explicit retained-state contract
+
+Plan:
+1. Record demo reset in the same transaction as its database mutations.
+2. Record prototype role switching according to the documented policy;
+   clarify that it records an asserted role change, not verified identity.
+3. Define reset scope for seeded-complaint demo predictions, risk factors,
+   derived hotspots, alerts, investigations and citizen demo reports.
+4. Remove or recompute derived state only where it belongs to the reset
+   scope; preserve seed rows, non-demo records and retained audit history.
+5. Preview every affected category and disclose retained state.
+6. Verify database privileges for append-only audit requirements instead of
+   assuming a service helper alone makes the log immutable.
+
+Likely files:
+  apps/web/services/demoService.ts
+  apps/web/services/auditService.ts
+  apps/web/app/api/role/route.ts
+  apps/web/components/demo/DemoResetControl.tsx
+  packages/db/migrations/ if reviewed privilege/schema changes are needed
+
+Acceptance:
+- Reset twice is safe and deterministic.
+- Mixed DEMO/USER references do not cause data loss or foreign-key failures.
+- Failed reset rolls back both changes and its audit event.
+- The confirmation describes what is actually removed and retained.
+
+
+F13 - FIX RESPONSIVE LAYOUT AND KEYBOARD ACCESSIBILITY
+Priority: P0 for reproduced defects; P1 for broader verification
+Owner: frontend | Estimate: 1-2 days
+Dependencies: none for the core fixes
+
+Plan:
+1. Contain complaint tables inside horizontal-scroll panels or supply mobile
+   transaction cards; prevent document-level horizontal overflow.
+2. Put hidden report tables in a bounded accessible wrapper so intrinsic
+   table height cannot expand the document's scroll area.
+3. Replace click-only hotspot list/table selections with native keyboard
+   controls and visible focus/selected-state feedback.
+4. Improve the phone graph using readable zoom, vertical layout or a default
+   accessible trail list; avoid tiny fit-to-width nodes in a tall empty canvas.
+5. Verify modal width, focus trapping/restoration and Escape behavior.
+6. Measure contrast before changing colors. Improve small pale metadata
+   where it fails contrast or realistic readability checks.
+7. Test desktop 1920x1080 and 1280x720, phone 390x844, zoom/reflow and
+   reduced-motion settings. Verify essential flows manually by keyboard.
+
+Likely files:
+  apps/web/app/(dashboard)/complaints/[complaintId]/page.tsx
+  apps/web/components/reports/ReportCharts.tsx
+  apps/web/components/prediction/PredictionPanel.tsx
+  apps/web/components/demo/DemoWalkthrough.tsx
+  apps/web/components/graph/MoneyTrailGraph.tsx
+  apps/web/components/alerts/AlertModal.tsx
+
+Acceptance:
+- No horizontal document overflow at the tested phone width.
+- No hidden-table-generated blank tail below Reports.
+- Keyboard users can select all hotspot alternatives and close dialogs.
+- Graph information is readable through the primary or equivalent view.
+- Accessibility claims state tested coverage, not just scanner results.
+
+
+F14 - CORRECT PRIVACY AND DATA-SOURCE CLAIMS
+Priority: P0 for wording; P1 for prototype safeguards
+Owner: backend + product | Estimate: 0.5-1 day
+Dependencies: inventory of free-text inputs and stored/logged fields
+
+Plan:
+1. Replace 'schema cannot hold personal data' with an accurate statement:
+   no dedicated personal-identifier fields; synthetic-only prototype use.
+2. Inventory notes, alert text, citizen inputs, audit metadata and logs.
+3. Add contextual synthetic-data guidance and enforce appropriate size and
+   format limits without claiming regex screening guarantees anonymity.
+4. Document retention/deletion behavior and tracking-code handling.
+5. Clearly distinguish generator-assigned account risk from model-predicted
+   location risk, and local scam-format checks from identity verification.
+6. Document missing transaction history for citizen complaints; provide an
+   insufficient-evidence state or clearly qualified output backed by separate
+   evaluation rather than assuming normal model performance transfers.
+
+Likely files:
+  README.md
+  security/data-protection.md or the corresponding existing privacy document
+  packages/db/schema/investigationNotes.ts
+  packages/db/schema/alerts.ts
+  apps/web/services/citizenReportService.ts
+  apps/web/components/safety/*
+  apps/web/components/graph/nodes/*
+
+Acceptance:
+- No absolute structural anonymity claim remains.
+- Users can distinguish synthetic input annotations from inferred outputs.
+- No-data citizen cases do not imply verified identity or established
+  prediction quality.
+- Sensitive raw inputs are not unnecessarily logged.
+
+
+F15 - IMPROVE PERFORMANCE AND OPERATIONAL RELIABILITY
+Priority: P1; cold-start rehearsal is required before submission
+Owner: backend + DevOps | Estimate: 1-2 days
+Dependencies: stable F01-F05 behavior
+
+Plan:
+1. Batch per-account history aggregation instead of two queries per account.
+2. Bound and scope ATM/withdrawal candidate queries; inspect execution plans
+   before adding indexes. Preserve observation-time correctness.
+3. Benchmark ten concurrent complaint predictions against the isolated stack.
+4. Define the hotspot map's aggregation contract. Recommended: distinguish
+   active forecasts from historical replay; never let an unexplained latest
+   write stand in for a national aggregate.
+5. Correct the historicalFrequency field if it currently stores riskScore;
+   use actual historical frequency or remove/rename the misleading field.
+6. Prune and bound limiter buckets; normalize client identity only behind
+   trusted proxies. Use shared limiting for any multi-instance deployment.
+7. Bound/directly protect the exposed ML endpoint; do not assume web rate
+   limiting also protects a separately reachable inference service.
+8. Catch missing, corrupt and incompatible artifact loads; report readiness
+   failure honestly without fabricated outputs or misleading healthy state.
+9. Separate readiness from simple process liveness in deployment checks.
+10. Rehearse the eight-second ML timeout against a cold service. Prefer a
+    verified ready local stack or reliable always-on deployment for judging;
+    do not claim pre-warming guarantees availability.
+11. Test basemap/geocoder failures independently of prediction failures.
+12. Review simulation polling: GET currently creates simulated events and
+    repeats insert attempts. Prefer explicit writes/read-only event retrieval
+    or document and bound the prototype behavior.
+
+Likely files:
+  apps/web/services/predictionService.ts
+  apps/web/services/hotspotService.ts
+  apps/web/services/transactionService.ts
+  apps/web/lib/rateLimit.ts
+  apps/web/services/mlClient.ts
+  apps/ml-service/app/core/model_loader.py
+  apps/ml-service/app/main.py
+  apps/ml-service/app/routers/health.py
+  render.yaml and docker/Dockerfile.ml
+
+Acceptance:
+- Measured end-to-end latency includes DB work, network, inference and writes.
+- Requirements' p95/memory targets pass under a documented load profile or
+  have an explicitly accepted, accurately disclosed deviation.
+- Cold/unavailable/corrupt-service scenarios produce honest retry states.
+- Map score/time aggregation is defined and tested across multiple cases.
+- Rate-limit storage remains bounded and bypass assumptions are documented.
+
+
+F16 - REWRITE SUBMISSION MATERIALS AND REHEARSE
+Priority: P0 | Owner: product + full-stack | Estimate: 1-1.5 days
+Dependencies: stable release candidate and verified results
+
+Plan:
+1. Update README inventory, current phase, setup and supported runtime.
+2. Rewrite narration using the actual current C-10284 record, or choose a
+   different verified case. Do not narrate predetermined scores/factors.
+3. Lead with one complete complaint -> evidence -> forecast -> explanation
+   -> internal alert story; keep ten-case throughput as a secondary demo.
+4. Include baseline comparisons, synthetic-data limits, observation time,
+   input provenance and the meaning of confidence in judge-facing material.
+5. Verify the official event/year/problem statement and submission format
+   from current authoritative material. Until verified, label compliance
+   uncertain rather than copying older event rules.
+6. Check the pilot proposal/PDF, diagrams, feature specifications, acceptance
+   criteria, model card and README for contradictory capabilities or metrics.
+7. Reconcile no-caching, anonymity, spatial-engine and external-delivery
+   wording with actual behavior and approved scope decisions.
+8. Perform two timed rehearsals of the exact release build in <=180 seconds.
+9. Rehearse reset, partial failure, total ML failure and local fallback.
+10. Save timings, build/artifact IDs, test results and the exact demo script.
+
+Likely files:
+  README.md
+  docs/demo-script.md
+  docs/pilot-proposal/*
+  PRD.md, REQUIREMENTS.md, ACCEPTANCE_CRITERIA.md
+  implementation/phase-8.md
+  project-management/decision-log.md
+  CHANGELOG.md
+
+Acceptance:
+- Script matches the actual records and observed outputs.
+- Two complete timed runs have evidence; no unsupported rehearsal assertion.
+- Every advertised capability is demonstrated, qualified or explicitly
+  deferred. Submission compliance is verified or marked unverified.
+
+
+F17 - OPTIONAL PRODUCT POLISH AND PILOT EVIDENCE
+Priority: P2 | Owner: frontend + product | Estimate: 1-2 days plus recruitment
+Dependencies: core release fixes
+
+Plan:
+- Add an above-the-fold empty-state action leading to a sample complaint.
+- Replace raw enum text with readable labels.
+- Move H3 indices/coordinates into expandable technical details.
+- Improve chart legibility and graph density without removing accessible
+  alternatives or synthetic-data disclosures.
+- Conduct a small representative-user comprehension/task study, with
+  explicit sample size and limitations; avoid claims of operational impact.
+- Define a future pilot's comparison baseline, intervention lead time,
+  false-positive cost, joint location/time outcome and success criteria.
+- Treat institutional data access and outcome capture as external dependencies
+  with owners, not as solved integration details.
+
+Acceptance:
+- A first-time reviewer can explain where, when, why and what action follows.
+- Usability observations are recorded separately from accuracy evidence.
+
+
+F18 - PRODUCTION HARDENING BACKLOG
+Priority: P3 | Estimate: separate discovery required; not part of hackathon ETA
+
+Required before operational or real-data deployment:
+- Verified identity, server-managed sessions and bank/jurisdiction tenancy.
+- A production configuration that cannot enable public role impersonation.
+- Service-to-service authentication and private inference access where possible.
+- Appropriate browser/security headers, request-size limits and abuse controls.
+- Lawful data access, minimization, encryption, retention and incident response.
+- Reliable delivery adapters with delivery status, retries and recipient identity.
+- Outcome capture, feedback quality, retraining approval and model monitoring.
+- Bias/adversarial evaluation, deployment drift checks and human review policy.
+- Backup/restore rehearsal, monitoring, capacity plan and service objectives.
+- A real operating-cost model including data access and staffing.
+
+Do not claim this work is completed because the synthetic demo passes.
+
+======================================================================
+5. VALIDATION MATRIX
+======================================================================
+
+Predictive correctness
+  Timestamp cutoff; no future-information influence; historical/current mode;
+  identical candidate selection; training/serving feature parity; final scorer
+  parity; baseline comparisons; joint location/window metrics; missing-data
+  behavior; artifact/metric provenance.
+
+Security and data boundaries
+  Direct role endpoint matrix; GUARD/BANK hotspot payloads; scoped totals;
+  input bounds; stale alert rejection; transactional audit writes; reset
+  isolation; dependency audit; client-bundle secret check.
+
+End-to-end behavior
+  Real web + real ML + isolated PostgreSQL: complaint -> prediction -> rendered
+  explanation -> internal alert -> acknowledgement -> investigation -> citizen
+  status where applicable. Include repeated actions and concurrency failures.
+
+Failure behavior
+  ML timeout/unavailable/malformed output; DB outage; corrupt/incompatible
+  artifacts; map/geocoder outage; failed refresh with an existing result;
+  one failed complaint versus all failed in the ten-case demo.
+
+UI/accessibility
+  Production build at desktop/phone widths; keyboard journey; focus behavior;
+  contrast measurements; readable graph equivalent; no document overflow;
+  no hidden-content scroll expansion; reduced motion and empty/loading states.
+
+Performance
+  Record hardware/runtime/dataset, sample count, concurrency and warm/cold
+  conditions. Measure p95 rather than extrapolating from a few successful calls.
+  Compare against REQUIREMENTS.md NFR targets and document any deviation.
+
+Documentation/demo
+  Claims-to-code review; verified event requirements; clean setup rehearsal;
+  two <=180-second runs; reset/fallback rehearsal; evidence saved with the
+  exact source and artifact versions.
+
+======================================================================
+6. ESTIMATES AND DELIVERY OPTIONS
+======================================================================
+
+Assumptions:
+- Experienced engineers already familiar with the codebase.
+- No real banking integration, identity platform rollout or new institutional
+  data agreement in the hackathon scope.
+- Scope correction is selected for currently unused spatial algorithms.
+- Estimates exclude waiting for user decisions, CI capacity or participants.
+
+Summing work packages F01-F16 gives roughly 12-25.5 engineer-days before
+overlap savings or unexpected rework. F17 adds approximately 1-2 days plus
+participant availability. These are effort ranges, not calendar guarantees.
+Do not add estimates from the earlier audit to these; they describe the same
+work at different levels of detail.
+
+Recommended release scope:
+- Complete all P0 items.
+- Include P1 items that repair visible controls, reset semantics and the
+  demonstrated workflow; document any remaining P1 limitation explicitly.
+- Defer new spatial algorithms, additional features and production integrations.
+- Schedule final validation only after the scoring semantics stabilize.
+
+If the deadline is very short:
+- Prioritize truthful claims, observation-time correctness, scope fixes,
+  dependency remediation, expiry cues and reproducible demo behavior.
+- Reduce advertised capability rather than fabricating outputs or suppressing
+  failing evidence. A reduced-scope prototype may be demonstrable but must
+  not be called fully complete under the existing broad requirements.
+
+======================================================================
+7. FINAL SUBMISSION EXIT CHECKLIST
+======================================================================
+
+[ ] Existing user changes preserved and release baseline recorded.
+[ ] Approved scope/ADR changes documented before claiming requirements met.
+[ ] No future-information leakage in the declared prediction workflow.
+[ ] Candidate generation reproducible across training and serving.
+[ ] Complete served pipeline evaluated with honest baseline comparisons.
+[ ] Score, confidence and explanation labels accurately describe their meaning.
+[ ] Historical/current modes and expiry protection verified.
+[ ] GUARD/BANK API visibility defects fixed.
+[ ] Dependency release policy satisfied; applicability/deviations documented.
+[ ] Internal alert semantics, settings and reset/audit behavior are consistent.
+[ ] Mobile overflow, Reports whitespace and keyboard defects corrected.
+[ ] Real-service integration/E2E checks pass on an isolated database.
+[ ] Model artifacts and reported metrics have matching provenance.
+[ ] Required performance/accessibility checks have evidence or accepted limits.
+[ ] README, proposal and demo script match the exact release build.
+[ ] Official submission requirements verified or uncertainty explicitly stated.
+[ ] Two <=180-second rehearsals completed with evidence.
+[ ] Failure and fallback demonstration rehearsed.
+[ ] No unsupported real-world accuracy, prevention, recovery or delivery claim.
+[ ] Remaining limitations and production-only work are disclosed.
+
+NEXT ACTION
+-----------
+Review this plan and explicitly approve the implementation scope. Until that
+approval, the only authorized change is this planning document.

@@ -76,8 +76,8 @@ def test_every_feature_against_a_hand_calculation():
     vec = build_vector(COMPLAINT, TXNS, ACCOUNTS, CELL)
     by_name = dict(zip(FEATURE_ORDER, vec, strict=True))
 
-    assert by_name["txn_amount_total"] == 75_500_000.0
-    assert by_name["txn_velocity_1h"] == 2.0  # both txns fall in [t0, t0+1h)
+    assert by_name["txn_amount_total"] == 0.0  # both transactions are after observation time
+    assert by_name["txn_velocity_1h"] == 0.0  # future transactions cannot affect a historical forecast
     assert by_name["linked_account_count"] == 1.0
     expected_age_days = (COMPLAINT.timestamp - ACCOUNTS[0].opened_at).total_seconds() / 86400
     assert by_name["account_age_days_min"] == pytest.approx(expected_age_days, abs=1e-9)
@@ -89,7 +89,7 @@ def test_every_feature_against_a_hand_calculation():
     assert by_name["day_of_week"] == 0.0  # 2026-09-14 is a Monday
     assert by_name["recency_hours"] == 0.0  # last txn is after the complaint timestamp -> clamped
     assert by_name["withdrawal_count"] == 5.0
-    assert by_name["linked_depth"] == 2.0  # max hop_index (1) + 1
+    assert by_name["linked_depth"] == 1.0  # future chain hops are not observed yet
 
 
 @pytest.mark.unit

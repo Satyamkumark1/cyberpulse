@@ -19,10 +19,12 @@ const COLORS = ["#075985", "#0f766e", "#b45309", "#be123c", "#6d28d9", "#4d7c0f"
 
 function AccessibleTable({ title, data }: { title: string; data: ReportSeries }) {
   return (
-    <table className="sr-only" aria-label={`${title} data table`}>
-      <thead><tr><th>Category</th><th>Value</th></tr></thead>
-      <tbody>{data.map((row) => <tr key={row.label}><td>{row.label}</td><td>{row.value}</td></tr>)}</tbody>
-    </table>
+    <div className="max-h-0 overflow-hidden">
+      <table className="sr-only" aria-label={`${title} data table`}>
+        <thead><tr><th>Category</th><th>Value</th></tr></thead>
+        <tbody>{data.map((row) => <tr key={row.label}><td>{row.label}</td><td>{row.value}</td></tr>)}</tbody>
+      </table>
+    </div>
   );
 }
 

@@ -46,7 +46,7 @@ export function ReportsDashboard() {
 
       <section className="rounded-sm border border-slate-200 bg-white p-5" aria-labelledby="model-evaluation-heading">
         <h2 id="model-evaluation-heading" className="text-base font-semibold text-slate-800">PROTOTYPE MODEL EVALUATION</h2>
-        <p className="mt-1 text-sm text-slate-600">Metrics were measured on a held-out split of synthetic data and do not represent operational performance.</p>
+        <p className="mt-1 text-sm text-slate-600">Historical synthetic-data observations only; these do not establish performance of the complete served ranking and temporal pipeline or operational performance.</p>
         {modelMetrics.isLoading ? <p className="mt-3 text-sm text-slate-500">Loading model evaluation…</p> : modelMetrics.isError ? <p className="mt-3 text-sm text-red-700">Unable to load model evaluation.</p> : !modelMetrics.data ? <p className="mt-3 text-sm text-slate-600">Model evaluation not yet run</p> : <dl className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">{[["Precision", modelMetrics.data.precision], ["Recall", modelMetrics.data.recall], ["F1", modelMetrics.data.f1], ["ROC-AUC", modelMetrics.data.rocAuc], ["Top-1 hit rate", modelMetrics.data.top1HitRate], ["Top-3 hit rate", modelMetrics.data.top3HitRate], ["Top-5 hit rate", modelMetrics.data.top5HitRate]].map(([label, value]) => <div key={String(label)}><dt className="text-slate-500">{label}</dt><dd className="font-mono font-medium text-slate-800">{Number(value).toFixed(3)}</dd></div>)}</dl>}
       </section>
     </div>

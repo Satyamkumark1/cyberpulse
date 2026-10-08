@@ -42,8 +42,8 @@ test("the scenario plays itself through on ten concurrent prediction calls", asy
   await expect(page).toHaveURL(/step=6/);
   await expect(page).not.toHaveURL(/auto=1/);
   await expect(page.getByRole("button", { name: "Run scenario" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Generate Alert" })).toBeVisible();
-  await expect(page.getByText("Not dispatched. Sending an alert is a human decision.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Queue Internal Alert" }).first()).toBeVisible();
+  await expect(page.getByText("Not queued. Queueing an internal alert is a human decision.").first()).toBeVisible();
 });
 
 test("each run-summary row reports its own prediction response", async ({ page }) => {
@@ -86,13 +86,16 @@ test("one failed prediction degrades only its row and does not block the run", a
   const summary = page.getByRole("region", { name: "Run summary" });
   const failedRow = summary.locator("li").filter({ has: page.getByText(failedId, { exact: true }) }).first();
   const predictionStages = failedRow.locator("ol").last().locator("li").filter({ hasNotText: "Complaint" });
-  await expect(predictionStages).toContainText("Prediction service unavailable");
+  await expect(failedRow).toContainText("Prediction service unavailable");
+  await expect(predictionStages).toHaveCount(5);
   // RULE-testing "prove absence": stages 3–6 contain no prediction-derived
   // score, window or exposure currency. Stage 1's reported amount is allowed.
-  await expect(predictionStages).not.toHaveText(/\d+(\.\d+)?%/);
-  await expect(predictionStages).not.toHaveText(/₹[\d,]+/);
-  await expect(predictionStages).not.toHaveText(/\d{2}:\d{2}\s*[–-]\s*\d{2}:\d{2}/);
-  await expect(summary.locator("li").filter({ hasText: "Prediction service unavailable" })).toHaveCount(1);
+  for (let index = 0; index < 5; index++) {
+    await expect(predictionStages.nth(index)).not.toHaveText(/\d+(\.\d+)?%/);
+    await expect(predictionStages.nth(index)).not.toHaveText(/₹[\d,]+/);
+    await expect(predictionStages.nth(index)).not.toHaveText(/\d{2}:\d{2}\s*[–-]\s*\d{2}:\d{2}/);
+  }
+  await expect(failedRow).toContainText("Prediction service unavailable");
   await expect(summary.getByText("Run summary")).toBeVisible();
 });
 
@@ -156,7 +159,7 @@ test("a row's alert modal renders that row's response, not another row's", async
 
   await page.getByRole("button", { name: "Next: Alert" }).click();
   const alertSection = page.locator("section").filter({ has: page.getByRole("heading", { name: "Alert", exact: true }) });
-  await alertSection.locator("li").filter({ hasText: selectedId }).getByRole("button", { name: "Generate Alert" }).click();
+  await alertSection.locator("li").filter({ hasText: selectedId }).getByRole("button", { name: "Queue Internal Alert" }).click();
 
   const modal = page.getByRole("dialog");
   await expect(modal).toBeVisible();
@@ -189,7 +192,7 @@ test("site coverage lists the duty posts the API returned for the predicted cell
 
   await page.getByRole("button", { name: "Next: Alert" }).click();
   const alertSection = page.locator("section").filter({ has: page.getByRole("heading", { name: "Alert", exact: true }) });
-  await alertSection.locator("li").filter({ hasText: selectedId }).getByRole("button", { name: "Generate Alert" }).click();
+  await alertSection.locator("li").filter({ hasText: selectedId }).getByRole("button", { name: "Queue Internal Alert" }).click();
   const modal = page.getByRole("dialog");
   await expect(modal).toBeVisible();
 

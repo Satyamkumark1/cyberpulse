@@ -44,39 +44,57 @@ export async function create(input: CreateAlertInput, ctx: RequestContext) {
     throw new NotFoundError();
   }
 
-  // Look up hotspot
-  const [hotspot] = await db
-    .select()
-    .from(hotspots)
-    .where(eq(hotspots.id, prediction.hotspotId))
-    .limit(1);
-
-  if (!hotspot) {
-    throw new NotFoundError();
-  }
-
-  // Server-side derived fields (FR-14.2 / ASM-10)
-  const severity = deriveSeverity(prediction.riskLevel);
-  // Exposure was computed and persisted with this prediction via the single
-  // ASM-10 implementation. Reusing that immutable server-derived value keeps
-  // the modal, alert record, and source prediction identical.
-  const exposurePaise = prediction.estimatedExposurePaise;
-  const locationName = `${hotspot.name}, ${hotspot.district}, ${hotspot.state}`;
-  const windowStart = prediction.predictedStart;
-  const windowEnd = prediction.predictedEnd;
-
   // Single atomic transaction across:
   // 1. alerts table insert
   // 2. investigation upsert to ALERT_SENT
   // 3. audit_events insert (ALERT_DISPATCHED)
   return db.transaction(async (tx) => {
+    // Prediction creation takes the same complaint-scoped advisory lock. This
+    // makes the latest-prediction check and alert insert one serialized unit,
+    // so a refresh cannot become current immediately after validation.
+    await tx.execute(sql`select pg_advisory_xact_lock(${prediction.complaintId})`);
+    const [currentPrediction] = await tx
+      .select()
+      .from(predictions)
+      .where(eq(predictions.id, prediction.id))
+      .limit(1);
+    if (!currentPrediction) throw new NotFoundError();
+
+    if (ctx.origin !== "DEMO") {
+      if (new Date(currentPrediction.predictedEnd).getTime() <= Date.now()) {
+        throw new ValidationError("This forecast has expired; run a new analysis before queuing an alert", "predictionRef");
+      }
+      const [latestForComplaint] = await tx
+        .select({ id: predictions.id })
+        .from(predictions)
+        .where(eq(predictions.complaintId, currentPrediction.complaintId))
+        .orderBy(desc(predictions.createdAt))
+        .limit(1);
+      if (latestForComplaint && latestForComplaint.id !== currentPrediction.id) {
+        throw new ValidationError("This forecast has been superseded; use the latest analysis", "predictionRef");
+      }
+    }
+
+    const [hotspot] = await tx
+      .select()
+      .from(hotspots)
+      .where(eq(hotspots.id, currentPrediction.hotspotId))
+      .limit(1);
+    if (!hotspot) throw new NotFoundError();
+
+    // Server-side derived fields (FR-14.2 / ASM-10)
+    const severity = deriveSeverity(currentPrediction.riskLevel);
+    const exposurePaise = currentPrediction.estimatedExposurePaise;
+    const locationName = `${hotspot.name}, ${hotspot.district}, ${hotspot.state}`;
+    const windowStart = currentPrediction.predictedStart;
+    const windowEnd = currentPrediction.predictedEnd;
     const tempAlertId = `ALT-${Date.now()}${Math.floor(1000 + Math.random() * 9000)}`;
 
     const [insertedAlert] = await tx
       .insert(alerts)
       .values({
         alertId: tempAlertId,
-        predictionId: prediction.id,
+        predictionId: currentPrediction.id,
         severity,
         locationName,
         latitude: hotspot.latitude,
@@ -103,7 +121,7 @@ export async function create(input: CreateAlertInput, ctx: RequestContext) {
     if (!alertRow) throw new Error("alert id update returned no row");
 
     // Advance or create investigation
-    const investigation = await upsertForAlert(tx, prediction.complaintId, insertedAlert.id, ctx);
+    const investigation = await upsertForAlert(tx, currentPrediction.complaintId, insertedAlert.id, ctx);
 
     // Link investigationId on alert
     await tx

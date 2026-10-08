@@ -123,7 +123,7 @@ export function AlertModal({ prediction, onClose, onSuccess, headers }: AlertMod
       apiFetch<CreateAlertResponse>(
         "/api/alerts",
         jsonInit("POST", { predictionRef: prediction.predictionRef, recipients, notes: notes.trim() || undefined }, headers),
-        "Failed to dispatch alert",
+        "Failed to queue internal alert",
       ),
     onSuccess: (data) => {
       // Invalidate queries so dashboard, alerts list, and investigation timeline reflect the alert
@@ -132,7 +132,7 @@ export function AlertModal({ prediction, onClose, onSuccess, headers }: AlertMod
       queryClient.invalidateQueries({ queryKey: ["complaint"] });
       queryClient.invalidateQueries({ queryKey: ["recent-alerts"] });
 
-      setToastMessage(`Alert ${data.alertId} dispatched successfully`);
+      setToastMessage(`Internal alert ${data.alertId} queued for the selected prototype roles`);
       if (onSuccess) {
         onSuccess(data.alertId);
       }
@@ -166,7 +166,7 @@ export function AlertModal({ prediction, onClose, onSuccess, headers }: AlertMod
       >
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <h2 id="alert-modal-title" className="text-base font-bold tracking-tight text-slate-900 uppercase">
-            HIGH-RISK WITHDRAWAL ALERT
+            INTERNAL HIGH-RISK ALERT
           </h2>
           <button
             type="button"
@@ -298,7 +298,7 @@ export function AlertModal({ prediction, onClose, onSuccess, headers }: AlertMod
               disabled={recipients.length === 0 || mutation.isPending}
               className="rounded-sm bg-red-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-red-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {mutation.isPending ? "Sending…" : "Send Alert"}
+              {mutation.isPending ? "Queueing…" : "Queue Internal Alert"}
             </button>
           </div>
         </form>

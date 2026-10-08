@@ -6,6 +6,7 @@
 """
 
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Final
@@ -111,8 +112,13 @@ def train_temporal_model(train_cal_df: pd.DataFrame) -> TemporalModel:
 
 
 def main() -> None:
-    model_dir = Path(__file__).resolve().parents[1] / "models"
+    model_dir = Path(os.environ.get("MODEL_OUTPUT_DIR", str(Path(__file__).resolve().parents[1] / "models" / "staging")))
     model_dir.mkdir(parents=True, exist_ok=True)
+    # A staging directory must never retain a previous evaluated card or
+    # promotion marker when a new training run fails part-way through.
+    if model_dir.name == "staging":
+        for stale in ("risk_model.joblib", "temporal_model.joblib", "feature_schema.json", "model_card.json", "evaluation_passed.json"):
+            (model_dir / stale).unlink(missing_ok=True)
 
     with psycopg.connect(database_url()) as conn:
         dataset = build_dataset(conn)
