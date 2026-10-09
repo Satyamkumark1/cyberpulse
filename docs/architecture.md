@@ -83,7 +83,7 @@ If you read only one section, read the failure model. It has no blank cells, and
 
 ## Things that will surprise you
 
-- **No Redis, no message broker, no Kubernetes.** Three deployables and one database. Every additional component is a failure mode during a three-minute evaluation.
+- **Redis is optional, not required.** The free local cache improves shared geographic lookups and rate limits, while the demo still runs with only the web app, ML service, and database.
 - **No LLM anywhere.** The prediction path is a tree ensemble with exact SHAP, because reproducibility and attribution are requirements.
 - **The ML service has no database access.** A compromise yields wrong predictions — caught by response validation — not data loss.
 - **Out-of-scope objects return 404, not 403.** A 403 confirms existence.

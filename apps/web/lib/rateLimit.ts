@@ -1,14 +1,13 @@
 import { getRequestId } from "./requestId";
 import { RateLimitedError, toErrorResponse } from "./errors";
+import { consumeRateLimit } from "./redis";
 
 // architecture/security-architecture.md §7. Every endpoint's limit is an
 // explicit decision made where the route is defined — see @cyberpulse/shared
 // RATE_LIMITS for the numbers by endpoint class.
 //
-// ponytail: in-memory, per-instance bucket — correct for this prototype's
-// single-process topology (no cache tier, ADR-017), not for a horizontally
-// scaled deployment. Upgrade to a shared store (Upstash/Redis) if the ML
-// service or web app ever runs more than one instance.
+// Redis is used when REDIS_URL is configured. The bounded in-memory map remains
+// the zero-setup fallback for local development and a single web process.
 interface Bucket {
   count: number;
   resetAt: number;
@@ -24,7 +23,7 @@ export interface RateLimitConfig {
   windowMs: number;
 }
 
-function checkRateLimit(key: string, config: RateLimitConfig): { allowed: boolean; retryAfterSeconds: number } {
+function checkLocalRateLimit(key: string, config: RateLimitConfig): { allowed: boolean; retryAfterSeconds: number } {
   const now = Date.now();
   // Requests can introduce unbounded keys (for example, spoofed forwarded
   // addresses). Cleanup is periodic so ordinary requests do not scan the
@@ -69,7 +68,10 @@ export function withRateLimit<A extends unknown[] = []>(
   return (handler: RateLimitedHandler<A>): RateLimitedHandler<A> =>
     async (req, ...rest) => {
       const key = `${new URL(req.url).pathname}:${keyFn(req)}`;
-      const result = checkRateLimit(key, config);
+      const shared = await consumeRateLimit(key, config.windowMs);
+      const result = shared
+        ? { allowed: shared.count <= config.limit, retryAfterSeconds: Math.max(1, Math.ceil((shared.resetAt - Date.now()) / 1000)) }
+        : checkLocalRateLimit(key, config);
 
       if (!result.allowed) {
         // Through the one serialiser (RULE-backend.md §Errors), plus Retry-After.

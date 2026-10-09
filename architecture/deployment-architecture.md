@@ -34,7 +34,7 @@ graph TB
   NX -->|TLS, pooled| PG
 ```
 
-Three deployables, one database, no shared filesystem, no message broker, no cache tier. The ML service is reachable only from the Next.js runtime; it is not exposed to the browser.
+Three deployables, one database, no shared filesystem, and no required message broker or cache tier. An optional Redis container can share geographic cache entries and rate-limit buckets. The ML service is reachable only from the Next.js runtime; it is not exposed to the browser.
 
 ---
 

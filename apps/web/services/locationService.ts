@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { CoordinateSchema, type LocationResponse, type PlaceLocation } from "@/lib/location";
 import { AppError } from "@/lib/errors";
+import { getCachedJsonWithTtl, redisKey, setCachedJson } from "@/lib/redis";
 
 const FeatureSchema = z.object({
   geometry: z.object({ type: z.literal("Point"), coordinates: z.tuple([z.number(), z.number()]) }),
@@ -39,6 +40,7 @@ export function normalizePlaces(body: unknown, reverse: boolean): PlaceLocation[
 const cache = new Map<string, { expires: number; value: LocationResponse }>();
 const pending = new Map<string, Promise<LocationResponse>>();
 let nextRequestAt = 0;
+const LOCATION_CACHE_TTL_SECONDS = 3_600;
 
 export async function lookupLocation(input: { q: string } | { latitude: number; longitude: number }): Promise<LocationResponse> {
   const reverse = "latitude" in input;
@@ -59,6 +61,14 @@ export async function lookupLocation(input: { q: string } | { latitude: number; 
   const now = Date.now();
   const cached = cache.get(key);
   if (cached && cached.expires > now) return cached.value;
+  const sharedKey = redisKey("geo", key);
+  const sharedCached = await getCachedJsonWithTtl<LocationResponse>(sharedKey);
+  if (sharedCached) {
+    if (sharedCached.ttlSeconds > 0) {
+      cache.set(key, { expires: now + sharedCached.ttlSeconds * 1000, value: sharedCached.value });
+    }
+    return sharedCached.value;
+  }
   const existing = pending.get(key);
   if (existing) return existing;
   // Bound public demo-provider use across all users of this process.
@@ -77,6 +87,7 @@ export async function lookupLocation(input: { q: string } | { latitude: number; 
     const value = { data, lookedUpAt: new Date().toISOString() };
     if (cache.size >= 500) cache.delete(cache.keys().next().value!);
     cache.set(key, { expires: now + 3_600_000, value });
+    await setCachedJson(sharedKey, value, LOCATION_CACHE_TTL_SECONDS);
     return value;
   } catch {
     throw new AppError("TIMEOUT", "Location lookup unavailable. Retry. The risk map is still available.");

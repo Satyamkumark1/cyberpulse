@@ -3,8 +3,10 @@
 // advisory it comes from, so the content can be checked and kept current.
 // Review this file whenever an advisory changes (phase-9.md §7).
 
-export type Lang = "en" | "hi";
-export type Text = Readonly<Record<Lang, string>>;
+import type { SafetyLocale } from "./locales";
+
+export type Lang = SafetyLocale;
+export type Text = Readonly<Record<"en" | "hi", string> & Partial<Record<Lang, string>>>;
 
 export const ADVISORY_SOURCES = {
   NITI_DIGITAL_ARREST: "NITI Aayog, Digital Arrest: The Modern Day Cyber Scam (2025)",

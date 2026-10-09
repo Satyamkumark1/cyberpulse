@@ -25,6 +25,7 @@ const noAnswers = () => Object.fromEntries(SCENARIO_IDS.map((id) => [id, [false,
  *  and the reasons behind them — never a score, percentage or probability. */
 export function ScamCheck({ lang }: { lang: Lang }) {
   const t = COPY[lang].check;
+  const contentLang = lang === "hi" ? "hi" : "en";
   const [scenarioId, setScenarioId] = useState<ScenarioId>("DIGITAL_ARREST");
   const [answers, setAnswers] = useState(noAnswers);
   // A verdict before the first tick would read "no red flags" for questions
@@ -62,7 +63,7 @@ export function ScamCheck({ lang }: { lang: Lang }) {
                   onChange={() => setScenarioId(id)}
                   className="sr-only"
                 />
-                {SCENARIOS[id].name[lang]}
+                {SCENARIOS[id].name[contentLang]}
               </label>
             ))}
           </div>
@@ -82,7 +83,7 @@ export function ScamCheck({ lang }: { lang: Lang }) {
                   onChange={(e) => toggle(i, e.target.checked)}
                   className="mt-1 h-5 w-5 shrink-0 accent-risk-high"
                 />
-                <span>{q.text[lang]}</span>
+                <span>{q.text[contentLang]}</span>
               </label>
             ))}
           </div>
@@ -114,7 +115,7 @@ export function ScamCheck({ lang }: { lang: Lang }) {
                   <h3 className="font-semibold">{t.whyHeading}</h3>
                   <ul className="mt-2 list-disc space-y-1 pl-5">
                     {matched.map((q) => (
-                      <li key={q.text.en}>{q.reason[lang]}</li>
+                      <li key={q.text.en}>{q.reason[contentLang]}</li>
                     ))}
                   </ul>
                 </div>
@@ -122,7 +123,7 @@ export function ScamCheck({ lang }: { lang: Lang }) {
                   <h3 className="font-semibold">{t.stepsHeading}</h3>
                   <ol className="mt-2 list-decimal space-y-1 pl-5">
                     {scenario.steps.map((step) => (
-                      <li key={step.en}>{step[lang]}</li>
+                      <li key={step.en}>{step[contentLang]}</li>
                     ))}
                   </ol>
                 </div>

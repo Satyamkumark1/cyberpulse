@@ -93,6 +93,18 @@ Every choice is justified with alternatives and trade-offs in `architecture/arch
 
 No placeholders. No cached predictions. No optimistic UI. No fallback default on failure. When a capability is unavailable the system says so and shows **no numbers at all**.
 
+### Optional free Redis cache
+
+The app can use a local Redis container for shared geographic lookup caching and rate limits. It is optional: without it, the existing bounded in-memory fallback is used.
+
+```bash
+docker compose up -d redis
+# add REDIS_URL=redis://localhost:6379 to apps/web/.env.local
+pnpm --filter web dev
+```
+
+Only geographic metadata is cached. Prediction and alert responses are never written to Redis.
+
 Six independent controls enforce it, and 24 test cases prove it — including one that intercepts the API response, rewrites it, and asserts the interface follows.
 
 ---

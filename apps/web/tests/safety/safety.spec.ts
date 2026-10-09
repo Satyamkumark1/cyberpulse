@@ -172,6 +172,7 @@ test("TC-SAFE-037: an invalid form moves focus to the first invalid field", asyn
 
 test("TC-SAFE-038: the Hindi toggle switches the page language through the URL", async ({ page }) => {
   await page.goto("/safety/check");
+  await page.getByLabel("Choose language. Current: English").click();
   await page.getByRole("link", { name: "हिन्दी" }).click();
   await expect(page).toHaveURL(/lang=hi/);
   await expect(page.locator("main")).toHaveAttribute("lang", "hi");

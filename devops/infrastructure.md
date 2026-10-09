@@ -25,13 +25,13 @@ Six entries, three of which run code. That is the whole estate.
 
 ## 2. Why This Shape
 
-The instinct on a project like this is to reach for Kubernetes, a message broker and a cache tier. Each would be defensible at scale and each is wrong here, for the same reason: **every additional component is another thing that can fail during a three-minute evaluation.**
+The instinct on a project like this is to reach for Kubernetes, a message broker and a cache tier. Kubernetes and a message broker remain out of scope. Redis is available as an optional free local component for shared geographic caching and rate limiting, but the application does not require it to boot.
 
 | Not used | Would add | Value at this scale |
 |---|---|---|
 | Kubernetes | Orchestration for three containers | None |
 | Message broker | A live failure mode | None — the "stream" is a UI simulation |
-| Redis | A cache-coherence path for prediction values | Negative — see `architecture/system-design.md` §7 |
+| Redis | Shared geographic cache and rate-limit buckets | Optional; prediction values are never cached |
 | Load balancer | A hop | None at 20 concurrent users |
 | Object storage | A dependency | Nothing to store |
 | Service mesh | Observability we already have | None |

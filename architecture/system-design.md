@@ -183,7 +183,7 @@ Deliberately minimal.
 | Model artefacts | Loaded once at ML service start | Per-request load would breach the latency budget |
 | Reports aggregates | 5 min server-side memo keyed by filter hash | Expensive, tolerant of staleness |
 
-**No Redis, no CDN caching of API responses, no service worker.** Each would add a way for the UI to show something the database does not say.
+**No CDN caching of API responses and no service worker.** An optional Redis tier caches geographic metadata and rate-limit buckets only; prediction and alert responses are never cached.
 
 ---
 
@@ -219,7 +219,7 @@ Recording what was rejected is as useful as recording what was chosen.
 | Not used | Why not |
 |---|---|
 | Kafka / message bus | The prototype's "stream" is a UI simulation. A real bus adds a live failure mode for zero demonstrated value. Revisit at V2 (`ROADMAP.md`). |
-| Redis | Nothing in the workload needs it; it would introduce a cache-coherence path for prediction values. |
+| Redis | Optional for shared geographic cache and rate-limit buckets; prediction values remain uncached. |
 | Microservice decomposition | Two services is already one more than strictly necessary; the ML split is justified only by the Python runtime requirement. |
 | GraphQL | The client's data needs are known and stable; typed REST with shared Zod schemas is simpler and gives better route-level authorisation. |
 | Server-Sent Events / WebSockets | No genuine server-push requirement in v1.0; the simulation is client-driven. |

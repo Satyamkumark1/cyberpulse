@@ -1,6 +1,7 @@
 import type { CitizenStage, FraudType } from "@cyberpulse/shared/enums";
 import type { Lang, ScamVerdict } from "./scamRules";
 import type { CallerReason, CheckLevel, LinkReason, UpiReason } from "./verifyChecks";
+import { SAFETY_LOCALES, safetyLocale } from "./locales";
 
 // FEAT-17 copy (FR-30). English is the source; `hi` is typed against it, so a
 // missing Hindi string fails typecheck. Hindi copy needs a native-speaker
@@ -20,13 +21,13 @@ export const MULE_LINE = "Never let anyone use your bank account. Money passed t
 export const HELPLINE_LABEL = "National Cybercrime Helpline 1930";
 
 export function langFrom(value: string | string[] | undefined): Lang {
-  return value === "hi" ? "hi" : "en";
+  return safetyLocale(value);
 }
 
 /** Language lives in the query string (RULE-frontend: URL state), not in client state. */
 export function withLang(path: string, lang: Lang): string {
   if (lang === "en") return path;
-  return `${path}${path.includes("?") ? "&" : "?"}lang=hi`;
+  return `${path}${path.includes("?") ? "&" : "?"}lang=${encodeURIComponent(lang)}`;
 }
 
 const en = {
@@ -383,4 +384,11 @@ const hi: Copy = {
   },
 };
 
-export const COPY: Readonly<Record<Lang, Copy>> = { en, hi };
+export const COPY: Readonly<Record<Lang, Copy>> = Object.fromEntries(
+  SAFETY_LOCALES.map(({ code }) => [code, code === "hi" ? hi : en]),
+) as Record<Lang, Copy>;
+
+/** Reviewed English is the safe fallback while other locales are translated. */
+export function copyFor(lang: Lang): Copy {
+  return lang === "hi" ? hi : en;
+}
