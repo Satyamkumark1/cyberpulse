@@ -206,6 +206,8 @@ covering the ATMs inside a predicted hotspot cell.
 | `historical_frequency` | real | NOT NULL DEFAULT 0 |
 | `last_refreshed_at` | timestamptz | NOT NULL DEFAULT now() |
 
+`hotspots` is the cell registry (name, centroid, district). Its risk columns hold whichever prediction wrote the cell last, so nothing displays them: the map, list, drawer and reports derive a cell's risk from current predictions (`packages/db/queries/currentPredictions.ts`).
+
 ### 4.7 `predictions`
 
 | Column | Type | Constraints |
@@ -366,8 +368,7 @@ Citizen complaint IDs come from `citizen_complaint_seq` (`START 90000 MINVALUE 9
 | `idx_atms_h3r9` | atms | `h3_r9` | Fine-grained density |
 | `idx_atms_bbox` | atms | `(latitude, longitude)` | Viewport-scoped map queries |
 | `idx_hotspots_h3` | hotspots | `h3_index` (unique) | Cell lookup |
-| `idx_hotspots_score` | hotspots | `risk_score DESC` | Ranked list and map layer |
-| `idx_pred_complaint_created` | predictions | `(complaint_id, created_at DESC)` | "Latest prediction for this complaint" |
+| `idx_pred_complaint_created` | predictions | `(complaint_id, created_at DESC)` | "Latest prediction for this complaint"; the current-predictions query behind the hotspot list |
 | `idx_rf_prediction_rank` | risk_factors | `(prediction_id, rank)` (unique) | Ordered factor retrieval |
 | `idx_alerts_status_created` | alerts | `(status, created_at DESC)` | Alerts list and dashboard panel |
 | `idx_alerts_severity` | alerts | `severity` | Severity filter and KPI |

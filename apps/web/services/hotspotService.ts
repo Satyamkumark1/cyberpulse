@@ -4,10 +4,11 @@ import { and, asc, desc, eq, gte, inArray, lt, lte, sql, type SQL } from "drizzl
 import { CANDIDATE_CELL_CAP } from "@cyberpulse/shared/constants";
 import type { RiskLevel } from "@cyberpulse/shared/enums";
 import { NotFoundError } from "@/lib/errors";
+import { currentCellRisk, currentPredictions } from "@cyberpulse/db/queries/currentPredictions";
 import { requireCapability, type RequestContext } from "./lib/auth";
 import { haversineMeters } from "./lib/geo";
 
-const { withdrawals, atms, hotspots, predictions, riskFactors, complaints } = dbSchema;
+const { withdrawals, atms, hotspots, riskFactors, complaints } = dbSchema;
 const NEARBY_ATM_KRING = 3;
 const NEARBY_ATM_LIMIT = 20;
 const RELATED_COMPLAINTS_LIMIT = 20;
@@ -126,11 +127,12 @@ export interface HotspotListQuery {
 export async function list(query: HotspotListQuery, ctx: RequestContext) {
   requireCapability(ctx.role, "hotspots:read");
 
+  const cell = currentCellRisk();
   const conditions: (SQL | undefined)[] = [];
   if (query.state) conditions.push(eq(hotspots.state, query.state));
-  if (query.riskLevel) conditions.push(eq(hotspots.riskLevel, query.riskLevel));
-  if (query.from) conditions.push(gte(hotspots.expectedStart, query.from));
-  if (query.to) conditions.push(lte(hotspots.expectedStart, query.to));
+  if (query.riskLevel) conditions.push(eq(cell.riskLevel, query.riskLevel));
+  if (query.from) conditions.push(gte(cell.predictedStart, query.from));
+  if (query.to) conditions.push(lte(cell.predictedStart, query.to));
   if (query.bbox) {
     conditions.push(
       gte(hotspots.latitude, query.bbox.minLat),
@@ -150,15 +152,17 @@ export async function list(query: HotspotListQuery, ctx: RequestContext) {
       city: hotspots.city,
       district: hotspots.district,
       state: hotspots.state,
-      riskScore: hotspots.riskScore,
-      riskLevel: hotspots.riskLevel,
-      likelyAtmCount: hotspots.likelyAtmCount,
-      expectedStart: hotspots.expectedStart,
-      expectedEnd: hotspots.expectedEnd,
+      riskScore: cell.riskScore,
+      riskLevel: cell.riskLevel,
+      likelyAtmCount: cell.likelyAtms,
+      expectedStart: cell.predictedStart,
+      expectedEnd: cell.predictedEnd,
     })
-    .from(hotspots)
+    .from(cell)
+    .innerJoin(hotspots, eq(hotspots.id, cell.hotspotId))
     .where(where)
-    .orderBy(desc(hotspots.riskScore))
+    // Ties broken on h3Index so the rail and map order is deterministic.
+    .orderBy(desc(cell.riskScore), asc(hotspots.h3Index))
     .limit(query.limit);
 
   return { data: rows };
@@ -167,8 +171,26 @@ export async function list(query: HotspotListQuery, ctx: RequestContext) {
 export async function getDetail(h3Index: string, ctx: RequestContext) {
   requireCapability(ctx.role, "hotspots:read");
 
-  const [hotspot] = await db.select().from(hotspots).where(eq(hotspots.h3Index, h3Index)).limit(1);
-  if (!hotspot) throw new NotFoundError();
+  const cell = currentCellRisk();
+  const [found] = await db
+    .select({
+      hotspot: hotspots,
+      predictionId: cell.predictionId,
+      predictionRef: cell.predictionRef,
+      riskScore: cell.riskScore,
+      riskLevel: cell.riskLevel,
+      predictedStart: cell.predictedStart,
+      predictedEnd: cell.predictedEnd,
+      likelyAtms: cell.likelyAtms,
+      estimatedExposurePaise: cell.estimatedExposurePaise,
+    })
+    .from(cell)
+    .innerJoin(hotspots, eq(hotspots.id, cell.hotspotId))
+    .where(eq(hotspots.h3Index, h3Index))
+    .limit(1);
+  // No current prediction names this cell: there is no risk to show for it.
+  if (!found) throw new NotFoundError();
+  const { hotspot, ...risk } = found;
 
   const nearCells = [...new Set(gridDisk(h3Index, NEARBY_ATM_KRING))];
   const nearbyAtmRows = nearCells.length ? await db.select().from(atms).where(inArray(atms.h3R8, nearCells)) : [];
@@ -192,12 +214,12 @@ export async function getDetail(h3Index: string, ctx: RequestContext) {
       city: hotspot.city,
       district: hotspot.district,
       state: hotspot.state,
-      riskScore: hotspot.riskScore,
-      riskLevel: hotspot.riskLevel,
-      expectedStart: hotspot.expectedStart,
-      expectedEnd: hotspot.expectedEnd,
-      likelyAtms: hotspot.likelyAtmCount,
-      likelyAtmCount: hotspot.likelyAtmCount,
+      riskScore: risk.riskScore,
+      riskLevel: risk.riskLevel,
+      expectedStart: risk.predictedStart,
+      expectedEnd: risk.predictedEnd,
+      likelyAtms: risk.likelyAtms,
+      likelyAtmCount: risk.likelyAtms,
       nearbyAtms,
       topFactors: [],
       relatedComplaints: [],
@@ -206,33 +228,26 @@ export async function getDetail(h3Index: string, ctx: RequestContext) {
     };
   }
 
-  // "the most recent prediction naming this cell" (API-031) — the latest
-  // prediction row that resolved to this hotspot, across any complaint.
-  const [latestPrediction] = await db
-    .select()
-    .from(predictions)
-    .where(eq(predictions.hotspotId, hotspot.id))
-    .orderBy(desc(predictions.createdAt))
-    .limit(1);
+  // API-031: the prediction behind the displayed score — so the factors
+  // explain the score shown, and the drawer's alert action targets a current
+  // (never superseded) prediction.
+  const topFactors = (
+    await db
+      .select()
+      .from(riskFactors)
+      .where(eq(riskFactors.predictionId, risk.predictionId))
+      .orderBy(riskFactors.rank)
+      .limit(TOP_FACTORS_LIMIT)
+  ).map((f) => ({ name: f.factorName, contribution: f.contribution, direction: f.direction }));
 
-  const topFactors = latestPrediction
-    ? (
-        await db
-          .select()
-          .from(riskFactors)
-          .where(eq(riskFactors.predictionId, latestPrediction.id))
-          .orderBy(riskFactors.rank)
-          .limit(TOP_FACTORS_LIMIT)
-      ).map((f) => ({ name: f.factorName, contribution: f.contribution, direction: f.direction }))
-    : [];
-
+  // Complaints whose current prediction names this cell.
+  const current = currentPredictions();
   const relatedComplaints = await db
     .select({ complaintId: complaints.complaintId, fraudType: complaints.fraudType, amountPaise: complaints.amountPaise })
-    .from(predictions)
-    .innerJoin(complaints, eq(complaints.id, predictions.complaintId))
-    .where(eq(predictions.hotspotId, hotspot.id))
-    .groupBy(complaints.complaintId, complaints.fraudType, complaints.amountPaise)
-    .orderBy(desc(sql`max(${predictions.createdAt})`))
+    .from(current)
+    .innerJoin(complaints, eq(complaints.id, current.complaintId))
+    .where(eq(current.hotspotId, hotspot.id))
+    .orderBy(desc(current.createdAt))
     .limit(RELATED_COMPLAINTS_LIMIT);
 
   return {
@@ -243,16 +258,16 @@ export async function getDetail(h3Index: string, ctx: RequestContext) {
     city: hotspot.city,
     district: hotspot.district,
     state: hotspot.state,
-    riskScore: hotspot.riskScore,
-    riskLevel: hotspot.riskLevel,
-    expectedStart: hotspot.expectedStart,
-    expectedEnd: hotspot.expectedEnd,
-    likelyAtmCount: hotspot.likelyAtmCount,
+    riskScore: risk.riskScore,
+    riskLevel: risk.riskLevel,
+    expectedStart: risk.predictedStart,
+    expectedEnd: risk.predictedEnd,
+    likelyAtmCount: risk.likelyAtms,
     nearbyAtms,
     topFactors,
     relatedComplaints,
     // AC-010-05: the drawer's internal-alert action needs the prediction to alert on.
-    predictionRef: latestPrediction?.predictionRef ?? null,
-    estimatedExposurePaise: latestPrediction ? Number(latestPrediction.estimatedExposurePaise) : null,
+    predictionRef: risk.predictionRef,
+    estimatedExposurePaise: Number(risk.estimatedExposurePaise),
   };
 }

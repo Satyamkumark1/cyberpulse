@@ -1,5 +1,6 @@
 import { db, dbSchema } from "@cyberpulse/db";
-import { and, desc, eq, gte, lte, ne, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lte, ne, sql, type SQL } from "drizzle-orm";
+import { currentPredictions } from "@cyberpulse/db/queries/currentPredictions";
 import type { FraudType } from "@cyberpulse/shared/enums";
 import { DATE_SPAN_MAX_DAYS } from "@cyberpulse/shared/constants";
 import { ValidationError } from "@/lib/errors";
@@ -55,6 +56,7 @@ function where(conditions: SQL[]) {
 export async function summary(filters: ReportFilters, ctx: RequestContext) {
   requireCapability(ctx.role, "reports:read");
   const complaintWhere = where(complaintConditions(filters, ctx));
+  const current = currentPredictions();
 
   const [complaintsOverTime, suspiciousTransactions, alertSeverity, predictedHotspots, topDistricts, fraudTypes] = await Promise.all([
     db
@@ -78,14 +80,16 @@ export async function summary(filters: ReportFilters, ctx: RequestContext) {
       .where(complaintWhere)
       .groupBy(alerts.severity)
       .orderBy(alerts.severity),
+    // Scored from in-scope complaints' current predictions, not the hotspot
+    // row's own columns, which hold whichever prediction wrote last.
     db
-      .select({ label: hotspots.name, value: sql<number>`max(${hotspots.riskScore})` })
-      .from(predictions)
-      .innerJoin(complaints, eq(predictions.complaintId, complaints.id))
-      .innerJoin(hotspots, eq(predictions.hotspotId, hotspots.id))
+      .select({ label: hotspots.name, value: sql<number>`max(${current.riskScore})` })
+      .from(current)
+      .innerJoin(complaints, eq(current.complaintId, complaints.id))
+      .innerJoin(hotspots, eq(current.hotspotId, hotspots.id))
       .where(complaintWhere)
       .groupBy(hotspots.id, hotspots.name)
-      .orderBy(desc(sql`max(${hotspots.riskScore})`))
+      .orderBy(desc(sql`max(${current.riskScore})`), asc(hotspots.name))
       .limit(10),
     db
       .select({ label: complaints.district, value: sql<number>`count(*)::int` })

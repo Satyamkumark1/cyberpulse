@@ -274,10 +274,10 @@ ADMIN and the demo route only. Writes exclusively to `simulation_events`. Start 
 ## 5. Hotspots
 
 ### API-030 · `GET /api/hotspots`
-Query: `state`, `riskLevel`, `from`, `to`, `limit` (default 20, max 100), `bbox` (`minLon,minLat,maxLon,maxLat`, clamped to India bounds). Returns ranked hotspots with `h3Index`, `name`, coordinates, `riskScore`, `riskLevel`, `likelyAtmCount`, `expectedStart`, `expectedEnd`. **Tests:** TC-API-014
+Query: `state`, `riskLevel`, `from`, `to`, `limit` (default 20, max 100), `bbox` (`minLon,minLat,maxLon,maxLat`, clamped to India bounds). Returns ranked hotspots with `h3Index`, `name`, coordinates, `riskScore`, `riskLevel`, `likelyAtmCount`, `expectedStart`, `expectedEnd`. A cell's risk fields come from the highest of its *current* predictions — each complaint's latest, so a superseded refresh no longer counts — never from the `hotspots` row's own columns; a cell no current prediction names is not listed. Ordered by `riskScore` desc, ties on `h3Index`. **Tests:** TC-API-014
 
 ### API-031 · `GET /api/hotspots/:h3Index`
-Returns the hotspot plus `nearbyAtms[]` (id, bank, distance in metres), `topFactors[]` from the most recent prediction naming this cell, and `relatedComplaints[]` (id, fraud type, amount). This is exactly the drawer's payload — one request, one screen. **Tests:** TC-UI-035
+Returns the hotspot plus `nearbyAtms[]` (id, bank, distance in metres), `topFactors[]`, `predictionRef` and exposure from the prediction behind the displayed score (as API-030), and `relatedComplaints[]` (id, fraud type, amount) whose current prediction names this cell. 404 when no current prediction names the cell. This is exactly the drawer's payload — one request, one screen. **Tests:** TC-UI-035
 
 ### API-032 · `GET /api/atms`
 Query: `bbox` (required, clamped), `limit` (default 500, max 2000). Viewport-scoped so the map never issues an unbounded query. **Tests:** TC-PERF-003

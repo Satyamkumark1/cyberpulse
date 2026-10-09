@@ -100,7 +100,7 @@ export default async function ComplaintDetailPage({
                 <td className="py-2 pr-4">{a.accountType}</td>
                 <td className="py-2 pr-4">{a.bankName}</td>
                 <td className="py-2 pr-4">
-                  <RiskBadge level={a.riskScore >= 0.7 ? "HIGH" : a.riskScore >= 0.4 ? "MEDIUM" : "LOW"} />
+                  <RiskBadge level={a.riskLevel} />
                 </td>
               </tr>
             ))}

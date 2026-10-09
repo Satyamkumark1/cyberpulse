@@ -1,11 +1,13 @@
 import { db, dbSchema } from "@cyberpulse/db";
 import { and, asc, desc, eq, gte, ilike, inArray, lte, or, sql, type SQL } from "drizzle-orm";
 import type { ComplaintStatus, FraudType, RiskLevel } from "@cyberpulse/shared/enums";
+import { DEFAULT_THRESHOLD_HIGH, DEFAULT_THRESHOLD_MEDIUM } from "@cyberpulse/shared/constants";
 import { NotFoundError, ValidationError } from "@/lib/errors";
 import { requireCapability, type RequestContext } from "./lib/auth";
+import { deriveRiskLevel } from "./lib/riskLevel";
 import { complaintScope } from "./lib/scope";
 
-const { complaints, transactions, accounts, predictions } = dbSchema;
+const { complaints, transactions, accounts, predictions, settings } = dbSchema;
 
 export interface ComplaintListQuery {
   page: number;
@@ -164,6 +166,11 @@ export async function getWithContext(complaintId: string, ctx: RequestContext) {
     : [];
   const businessIdById = new Map(linkedAccounts.map((a) => [a.id, a.accountId]));
 
+  // FR-22: the level is derived here from the current settings thresholds —
+  // never in a component — so the page shows what the thresholds say today.
+  const [settingsRow] = await db.select({ high: settings.thresholdHigh, medium: settings.thresholdMedium }).from(settings).where(eq(settings.id, 1)).limit(1);
+  const thresholds = settingsRow ?? { high: DEFAULT_THRESHOLD_HIGH, medium: DEFAULT_THRESHOLD_MEDIUM };
+
   // Composes only `db` (Service Layer table, architecture/low-level-design.md
   // §3) — the latest prediction is predictionService's concern, joined by
   // the caller (route handler or page), not fetched here.
@@ -179,6 +186,6 @@ export async function getWithContext(complaintId: string, ctx: RequestContext) {
       riskIndicator: t.riskIndicator,
       hopIndex: t.hopIndex,
     })),
-    linkedAccounts,
+    linkedAccounts: linkedAccounts.map((a) => ({ ...a, riskLevel: deriveRiskLevel(a.riskScore, thresholds) })),
   };
 }

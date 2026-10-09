@@ -36,7 +36,6 @@ export const hotspots = pgTable(
   },
   (table) => [
     uniqueIndex("idx_hotspots_h3").on(table.h3Index),
-    index("idx_hotspots_score").on(table.riskScore.desc()),
     check("hotspots_risk_score_range", sql`${table.riskScore} BETWEEN 0 AND 1`),
   ],
 );
