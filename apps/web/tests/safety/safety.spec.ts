@@ -202,3 +202,99 @@ test("no one-click tracking button appears before a report is filed in this tab"
   await page.goto("/safety/status");
   await expect(page.getByRole("button", { name: /Use the report you just filed/ })).toHaveCount(0);
 });
+
+test("global request indicator shows while an API call is in flight and clears when it settles", async ({ page }) => {
+  let release!: () => void;
+  const held = new Promise<void>((r) => (release = r));
+  await page.route("**/api/citizen/reports/status", async (route) => {
+    await held;
+    await route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ error: { code: "NOT_FOUND", message: "Not found." } }) });
+  });
+  await page.goto("/safety/status");
+  const indicator = page.getByRole("status").filter({ hasText: "Loading" });
+  await expect(indicator).toHaveCount(0);
+
+  await page.getByLabel("Tracking code").fill("ANY-CODE");
+  await page.getByRole("button", { name: "Check status" }).click();
+  await expect(indicator).toBeVisible();
+  await expect(indicator).not.toContainText(/\d/);
+
+  release();
+  await expect(indicator).toHaveCount(0);
+});
+
+async function askScamShield(page: Page, reply: Record<string, unknown>) {
+  await page.route("**/api/safety/voice", (route) => route.fulfill({ json: { ...reply, provider: "groq" } }));
+  await page.goto("/safety");
+  await page.getByRole("button", { name: "Open Scam Shield voice assistant" }).click();
+  await page.getByRole("button", { name: "Someone is asking for my OTP" }).click();
+  return page.getByRole("dialog", { name: "Scam Shield AI assistant" });
+}
+
+test("Scam Shield renders verdict, steps and reference chips exactly as the response gave them", async ({ page }) => {
+  const reply = { verdict: "Likely a scam call asking for money.", steps: ["Hang up now.", "Do not share any code."], references: ["HELPLINE_1930", "SANCHAR_SAATHI"], intent: "REPORT", route: "/safety/report", urgent: true };
+  const dialog = await askScamShield(page, reply);
+  await expect(dialog.getByText(reply.verdict, { exact: true })).toBeVisible();
+  await expect(dialog.getByRole("listitem")).toHaveText(reply.steps);
+  await expect(dialog.getByRole("link", { name: "National Cybercrime Helpline 1930", exact: true })).toHaveAttribute("href", "tel:1930");
+  await expect(dialog.getByRole("link", { name: "Report a fraud call: sancharsaathi.gov.in" })).toHaveAttribute("href", "https://sancharsaathi.gov.in");
+  await expect(dialog.getByRole("link", { name: "Call National Cybercrime Helpline 1930" })).toBeVisible();
+});
+
+test("Scam Shield pins the 1930 call bar only when the reply is urgent", async ({ page }) => {
+  const dialog = await askScamShield(page, { verdict: "This looks like a common OTP scam.", steps: ["Do not share the OTP."], references: [], intent: "CHECK", route: null, urgent: false });
+  await expect(dialog.getByText("This looks like a common OTP scam.", { exact: true })).toBeVisible();
+  await expect(dialog.getByRole("link", { name: "Call National Cybercrime Helpline 1930" })).toHaveCount(0);
+});
+
+test("Scam Shield shows its progress in the chat, not in the page-level indicator", async ({ page }) => {
+  let release!: () => void;
+  const held = new Promise<void>((r) => (release = r));
+  await page.route("**/api/safety/voice", async (route) => {
+    await held;
+    await route.fulfill({ json: { verdict: "Do not share the OTP.", steps: [], references: [], intent: "CHECK", route: null, urgent: false, provider: "groq" } });
+  });
+  await page.goto("/safety");
+  await page.getByRole("button", { name: "Open Scam Shield voice assistant" }).click();
+  await page.getByRole("button", { name: "Someone is asking for my OTP" }).click();
+  const dialog = page.getByRole("dialog", { name: "Scam Shield AI assistant" });
+
+  await expect(dialog.getByRole("status").filter({ hasText: "Thinking" })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Loading" })).toHaveCount(0);
+
+  release();
+  await expect(dialog.getByText("Do not share the OTP.", { exact: true })).toBeVisible();
+  await expect(dialog.getByRole("status").filter({ hasText: "Thinking" })).toHaveCount(0);
+});
+
+test("the language selector opens full-height on a phone and closes after a language is chosen", async ({ page }) => {
+  await page.setViewportSize({ width: 393, height: 852 });
+  await page.goto("/safety");
+  await page.getByLabel("Choose language. Current: English").click();
+  const panel = page.getByRole("heading", { name: "Choose your language" }).locator("xpath=ancestor::*[@popover]");
+  await expect(panel).toBeVisible();
+  expect((await panel.boundingBox())!.height).toBeGreaterThan(400);
+
+  await page.getByRole("link", { name: /हिन्दी/ }).click();
+  await expect(page).toHaveURL(/lang=hi/);
+  await expect(page.getByRole("heading", { name: "Choose your language" })).toBeHidden();
+});
+
+test("the language selector's close button closes it without navigating", async ({ page }) => {
+  await page.goto("/safety");
+  await page.getByLabel("Choose language. Current: English").click();
+  await page.getByRole("button", { name: "Close language selector" }).click();
+  await expect(page.getByRole("heading", { name: "Choose your language" })).toBeHidden();
+});
+
+test("Scam Shield explains when a language is answered in another one, and keeps the safety line in English", async ({ page }) => {
+  await page.route("**/api/safety/voice", (route) => route.fulfill({ json: { verdict: "Do not share the OTP.", steps: [], references: [], intent: "CHECK", route: null, urgent: false, provider: "groq", replyLang: "en" } }));
+  await page.goto("/safety?lang=tcy");
+  await page.locator("main").waitFor();
+  await page.getByRole("button", { name: "Scam Shield ಸ್ವರ ಸಹಾಯಕನ್ ಬುಡೆಲೆ" }).click();
+  const dialog = page.getByRole("dialog", { name: "Scam Shield AI ಸಹಾಯಕೆ" });
+  await expect(dialog.getByText("Never share an OTP, PIN, password, CVV, or full bank details.")).toBeVisible();
+  await dialog.getByRole("button", { name: "ಏರೊ ಎನ್ನಡ OTP ಕೇನೊಂದುಲ್ಲೆರ್" }).click();
+  await expect(dialog.getByText("Do not share the OTP.", { exact: true })).toBeVisible();
+  await expect(dialog.getByText(/Scam Shield ಇಂಗ್ಲಿಷ್‌ಡ್ ಉತ್ತರ ಕೊರ್ಪುಂಡು/)).toBeVisible();
+});

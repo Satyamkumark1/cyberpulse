@@ -167,6 +167,13 @@ Reversible:  Yes / No / At what cost
 **Consequences.** One fewer image to keep in step with Next.js; CI no longer builds it. The fallback laptop needs Node 20 and pnpm installed, as it already did for `make dev`.
 **Reversible.** Restore the file, the compose service and `output: "standalone"` from git history.
 
+### DEC-016 · A second Groq key takes over when the first is refused
+**Date** 2026-10-09 · **Decided by** Project owner · **Phase** post-P9 (FEAT-17 voice assistant)
+**Context.** Scam Shield's chat and voice transcription call Groq's free tier, which limits requests per minute. A live run across the 28 safety locales hit that limit, and the citizen got the canned English fallback.
+**Decision.** An optional `GROQ_API_KEY_FALLBACK`. `lib/groq.ts` sends each request with `GROQ_API_KEY` first and, only when that response is 401, 403, 429 or 5xx, once more with the second key. This narrows `.claude/rules/backend.md` §Errors ("Retry: connection errors only, once… never a 4xx") for this one external provider: the second attempt uses a different credential, so it is a failover, not a retry of the refused one. A 400 is never re-sent, and a network error or timeout does not move on to the second key.
+**Consequences.** At most two calls per request, plus at most one language retry in the chat route — so a chat request can make up to four Groq calls. New env var in `.env.example`; Vercel and preview environments need it set for the failover to apply. Without it, behaviour is unchanged.
+**Reversible.** Unset `GROQ_API_KEY_FALLBACK`.
+
 ---
 
 ## Scope Change Protocol

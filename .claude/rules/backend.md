@@ -49,7 +49,7 @@ No business logic. No SQL. No bespoke error responses. A handler that does more 
 
 Typed classes only, never strings. One serialiser produces every response. `SAFE_MESSAGES` is a static map, so an exception's text can never reach a client. Never swallow; the only permitted catch-and-continue records a deliberate degradation with an explicit response flag (`explanationAvailable: false`).
 
-Retry: connection errors only, once. Never a timeout, never a 4xx.
+Retry: connection errors only, once. Never a timeout, never a 4xx. One documented exception (DEC-016): `lib/groq.ts` may resend a request refused for a key-level reason (401/403/429/5xx) once, with the second Groq key.
 
 ---
 

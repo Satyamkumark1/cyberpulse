@@ -1,11 +1,15 @@
 import { env } from "@/lib/env";
+import { groqConfigured, groqFetch } from "@/lib/groq";
 import { withRateLimit } from "@/lib/rateLimit";
 
 const LIMIT = { limit: 12, windowMs: 60_000 };
 const MAX_AUDIO_BYTES = 8 * 1024 * 1024;
+// Safety locales Whisper accepts as a language hint (verified against Groq:
+// "or" and "ks" are rejected with 400). Any other locale is auto-detected.
+const WHISPER_LANGUAGES = new Set(["en", "hi", "bn", "mr", "gu", "ta", "te", "kn", "ml", "pa", "ur", "ne", "as", "sa", "sd"]);
 
 export const POST = withRateLimit(LIMIT)(async (request: Request) => {
-  if (!env.GROQ_API_KEY) return Response.json({ error: "Voice transcription is not configured yet. You can still type a message." }, { status: 503 });
+  if (!groqConfigured) return Response.json({ error: "Voice transcription is not configured yet. You can still type a message." }, { status: 503 });
   if (!request.headers.get("content-type")?.toLowerCase().startsWith("multipart/form-data")) {
     return Response.json({ error: "Send the recording as multipart form data." }, { status: 400 });
   }
@@ -30,14 +34,11 @@ export const POST = withRateLimit(LIMIT)(async (request: Request) => {
   body.set("file", audio, audio.name || "voice.webm");
   body.set("model", env.GROQ_TRANSCRIPTION_MODEL);
   body.set("response_format", "json");
-  if (typeof language === "string" && /^[a-z]{2}$/.test(language)) body.set("language", language);
+  if (typeof language === "string" && WHISPER_LANGUAGES.has(language)) body.set("language", language);
 
   let response: Response;
   try {
-    response = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
-      method: "POST", headers: { Authorization: `Bearer ${env.GROQ_API_KEY}` }, body, cache: "no-store",
-      signal: AbortSignal.timeout(15_000),
-    });
+    response = await groqFetch("audio/transcriptions", { method: "POST", body });
   } catch {
     return Response.json({ error: "Voice transcription is temporarily unavailable. Type your message instead." }, { status: 503 });
   }

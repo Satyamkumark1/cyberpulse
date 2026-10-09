@@ -55,3 +55,12 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* components/safety/SafetyShell.tsx — language picker opens as a bottom sheet on phones. */
+@keyframes sheetUp { from { transform: translateY(100%); } }
+@media (max-width: 639px) {
+  .lang-sheet:popover-open { animation: sheetUp .24s cubic-bezier(.2, .8, .2, 1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lang-sheet:popover-open { animation: none; }
+}

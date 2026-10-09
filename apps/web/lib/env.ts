@@ -10,6 +10,8 @@ const EnvSchema = z.object({
   NEXT_PUBLIC_MAP_TILE_URL: z.string().url(),
   REDIS_URL: z.preprocess((value) => value === "" ? undefined : value, z.string().url().optional()),
   GROQ_API_KEY: z.string().min(20).optional(),
+  // DEC-016: tried when GROQ_API_KEY is rate-limited, rejected or Groq errors.
+  GROQ_API_KEY_FALLBACK: z.string().min(20).optional(),
   GROQ_CHAT_MODEL: z.string().default("openai/gpt-oss-20b"),
   GROQ_TRANSCRIPTION_MODEL: z.string().default("whisper-large-v3-turbo"),
   NEXT_PUBLIC_APP_NAME: z.string().default("CyberPulse AI"),

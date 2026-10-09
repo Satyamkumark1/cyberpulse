@@ -8,7 +8,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SCAN_DIRS=("$ROOT/apps/web/app" "$ROOT/apps/web/components" "$ROOT/apps/web/lib" "$ROOT/apps/web/services")
 
-GREP_EXCLUDES=(--exclude-dir=node_modules --exclude-dir=.next --exclude="*.test.*" --exclude="*.spec.*" --exclude-dir=__fixtures__)
+# prohibitedLexicon.ts is the runtime deny-list that discards AI replies using
+# these words; like the specs, it must spell them out to match against them.
+GREP_EXCLUDES=(--exclude-dir=node_modules --exclude-dir=.next --exclude="*.test.*" --exclude="*.spec.*" --exclude-dir=__fixtures__ --exclude=prohibitedLexicon.ts)
 
 fail=0
 
