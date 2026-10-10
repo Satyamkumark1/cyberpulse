@@ -360,6 +360,8 @@
 
 **Reversible.** Yes: no migration. Reverting the code change restores ADR-019 behaviour.
 
+**Amendment (2026-10-10): the code is shown for judging.** Judges asked to use ADMIN on their own devices, so the role switcher shows the demo code with a **Use demo code** button. **While it is shown, anyone who can open the app can become ADMIN**, and the HMAC key, which derives from the code, can be computed by anyone, so ADMIN expiry is not a security property either. What remains: ADMIN is never granted by the role header or a hand-written cookie, and every ADMIN switch goes through `POST /api/role` and its rate limit. To make ADMIN private again, stop passing `demoCode` to `RoleSwitcher` (three call sites) and rotate `ADMIN_ACCESS_CODE`. Also added: one-click persona buttons replace the dropdown; the ADMIN form can be saved by a browser's password manager; and `keep: true` issues a 7-day ADMIN cookie instead of 8 hours.
+
 ---
 
 ## Decision Index

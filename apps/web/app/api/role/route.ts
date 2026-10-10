@@ -6,7 +6,9 @@ import { withRateLimit } from "@/lib/rateLimit";
 import { getRequestId } from "@/lib/requestId";
 import { issueRoleCookie, ROLE_COOKIE } from "@/services/lib/auth";
 
-const BodySchema = z.object({ role: z.enum(ACTOR_ROLES), accessCode: z.string().min(1).max(128).optional() }).strict();
+const BodySchema = z
+  .object({ role: z.enum(ACTOR_ROLES), accessCode: z.string().min(1).max(128).optional(), keep: z.boolean().optional() })
+  .strict();
 
 // architecture/api-design.md API-091, security/auth-strategy.md §2. Still not
 // authentication (ADR-019): no person is identified. ADMIN needs the demo
@@ -15,8 +17,8 @@ const BodySchema = z.object({ role: z.enum(ACTOR_ROLES), accessCode: z.string().
 export const POST = withRateLimit(RATE_LIMITS.mutations)(async (req: Request) => {
   const requestId = getRequestId(req);
   try {
-    const { role, accessCode } = BodySchema.parse(await req.json());
-    const cookie = issueRoleCookie(role, accessCode, Date.now());
+    const { role, accessCode, keep } = BodySchema.parse(await req.json());
+    const cookie = issueRoleCookie(role, accessCode, Date.now(), keep);
     const maxAge = cookie.maxAgeSeconds === undefined ? "" : `; Max-Age=${cookie.maxAgeSeconds}`;
     const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
     return Response.json(

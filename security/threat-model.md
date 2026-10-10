@@ -44,7 +44,7 @@ A-8 is unusual as an asset because it is a *negative* property, and negative pro
 
 | STRIDE | Threat | Likelihood | Impact | Control | Test |
 |---|---|:--:|:--:|---|---|
-| **S**poofing | Caller selects an arbitrary role via `x-cyberpulse-role` | High | Medium | **Accepted in the prototype for every role except ADMIN** (ADR-019). ADMIN needs the demo access code and a signed, expiring cookie; the header cannot claim it (ADR-023). No real data exists. Authorisation is still enforced server-side so the boundary is demonstrably real. V1 replaces this with verified identity. | TC-SEC-010 |
+| **S**poofing | Caller selects an arbitrary role via `x-cyberpulse-role` | High | Medium | **Accepted in the prototype** (ADR-019). ADMIN needs the demo access code and a signed cookie, and the header cannot claim it (ADR-023), but the code is shown in the role switcher for judging, so anyone who can open the app can become ADMIN until the display is removed and the code rotated. No real data exists. Authorisation is still enforced server-side so the boundary is demonstrably real. V1 replaces this with verified identity. | TC-SEC-010 |
 | **T**ampering | Client supplies `severity` or `exposurePaise` on alert creation | Medium | High | Server-derived fields are **rejected with 400**, not ignored | TC-SEC-014 |
 | **T**ampering | Sort parameter used to inject an ordering clause | Medium | High | Allow-listed sort columns mapped to column references | TC-SEC-013 |
 | **R**epudiation | Officer denies dispatching an alert | Low | High | Audit event written in the same transaction; no application path amends it | TC-SEC-030 |

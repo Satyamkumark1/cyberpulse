@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ForbiddenError } from "@/lib/errors";
 import {
+  ADMIN_KEEP_TTL_MS,
   ADMIN_SESSION_TTL_MS,
   issueRoleCookie,
   requireCapability,
@@ -86,6 +87,13 @@ describe("issueRoleCookie (ADR-023)", () => {
 
   it("issues an ADMIN cookie that lasts the session lifetime", () => {
     expect(issueRoleCookie("ADMIN", process.env.ADMIN_ACCESS_CODE, NOW_MS).maxAgeSeconds).toBe(ADMIN_SESSION_TTL_MS / 1000);
+  });
+
+  it("keeps ADMIN for seven days when asked", () => {
+    const kept = issueRoleCookie("ADMIN", process.env.ADMIN_ACCESS_CODE, NOW_MS, true);
+    expect(kept.maxAgeSeconds).toBe(ADMIN_KEEP_TTL_MS / 1000);
+    expect(resolveRole(withCookie(kept.value), NOW_MS + ADMIN_KEEP_TTL_MS - 1)).toBe("ADMIN");
+    expect(resolveRole(withCookie(kept.value), NOW_MS + ADMIN_KEEP_TTL_MS)).toBe("LEA");
   });
 
   it.each(["LEA", "BANK", "GUARD", "I4C", "CITIZEN"] as const)("issues %s without an access code", (role) => {

@@ -18,6 +18,8 @@ const ActorRoleSchema = z.enum(ACTOR_ROLES);
 export const ROLE_COOKIE = "cyberpulse_role";
 const ROLE_HEADER = "x-cyberpulse-role";
 export const ADMIN_SESSION_TTL_MS = 8 * 60 * 60 * 1000;
+// "Keep ADMIN on this device": enter the code once before an event.
+export const ADMIN_KEEP_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const SIGNED_ADMIN = /^ADMIN\.(\d{1,16})\.([A-Za-z0-9_-]{43})$/;
 
 export function resolveRole(req: Request, nowMs: number = Date.now()): ActorRole {
@@ -31,11 +33,20 @@ export function issueRoleCookie(
   role: ActorRole,
   accessCode: string | undefined,
   nowMs: number,
+  keep = false,
 ): { value: string; maxAgeSeconds?: number } {
   if (role !== "ADMIN") return { value: role };
   if (accessCode === undefined || !sameText(accessCode, env.ADMIN_ACCESS_CODE)) throw new ForbiddenError();
-  const payload = `ADMIN.${nowMs + ADMIN_SESSION_TTL_MS}`;
-  return { value: `${payload}.${sign(payload)}`, maxAgeSeconds: ADMIN_SESSION_TTL_MS / 1000 };
+  const ttlMs = keep ? ADMIN_KEEP_TTL_MS : ADMIN_SESSION_TTL_MS;
+  const payload = `ADMIN.${nowMs + ttlMs}`;
+  return { value: `${payload}.${sign(payload)}`, maxAgeSeconds: ttlMs / 1000 };
+}
+
+/** ADR-023 amendment: the code is shown in the role switcher so judges can
+ * use ADMIN on their own devices. Server-only callers pass it to the client
+ * component; while it is shown, anyone with the link can become ADMIN. */
+export function demoAdminAccessCode(): string {
+  return env.ADMIN_ACCESS_CODE;
 }
 
 // The key derives from the access code, so changing the code also ends every

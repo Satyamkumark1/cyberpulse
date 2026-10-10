@@ -186,7 +186,7 @@
 
 ### TC-API-091 — Role switch
 **Medium**
-**Expected:** Known role accepted; unknown role → 400; ADMIN without the access code, or with a wrong one → 403 and no cookie change; a hand-written, edited or expired ADMIN cookie, or `x-cyberpulse-role: ADMIN`, resolves to LEA (ADR-023); the response never implies an authenticated session.
+**Expected:** Known role accepted; unknown role → 400; ADMIN without the access code, or with a wrong one → 403 and no cookie change; a hand-written, edited or expired ADMIN cookie, or `x-cyberpulse-role: ADMIN`, resolves to LEA (ADR-023); `"keep": true` gives a 7-day ADMIN cookie; the response never implies an authenticated session.
 
 ---
 

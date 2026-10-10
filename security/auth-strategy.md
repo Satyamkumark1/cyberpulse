@@ -115,7 +115,8 @@ Step 2 is the only step touching application logic, because authorisation is alr
 |---|---|---|
 | Any caller can assume any role except ADMIN | No real data exists; the non-ADMIN roles only demonstrate boundaries | Synthetic-only constraint (CR-01); ADMIN needs the access code (ADR-023) |
 | No attribution beyond role | Prototype audit demonstrates the mechanism, not real accountability | Declared in `security/security-checklist.md` |
-| One ADMIN code shared by every presenter | No identities exist to tell presenters apart | 8-hour signed cookie; changing the code ends every ADMIN session |
+| ADMIN code shown in the role switcher | Judges use ADMIN on their own devices (ADR-023 amendment) | Anyone who can open the app can become ADMIN; remove the display and rotate the code to close it |
+| One ADMIN code shared by every user of it | No identities exist to tell people apart | 8-hour signed cookie, or 7 days with "Keep ADMIN on this device"; changing the code ends every ADMIN session |
 | Non-ADMIN role cookies never expire | They grant nothing a caller could not claim anyway | — |
 
 The cookie is `httpOnly` because for ADMIN it is a bearer token (ADR-023). For every other role it still grants nothing a caller could not claim with a header, and the code and the UI both say so.

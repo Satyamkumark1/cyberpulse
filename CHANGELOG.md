@@ -10,6 +10,13 @@ Change-management rules — what must accompany each kind of change — are defi
 
 ## [Unreleased]
 
+### Changed — faster role switching; ADMIN demo code shown for judging (ADR-023 amendment)
+
+- One-click persona buttons (LEA, BANK, ADMIN, GUARD, I4C, CITIZEN) replace the role dropdown.
+- Choosing ADMIN shows the demo code with a **Use demo code** button, so judges can use ADMIN on their own devices. **While the code is shown, anyone who can open the app can become ADMIN** (reset demo data, change thresholds). ADMIN still cannot be claimed by header or hand-written cookie.
+- "Keep ADMIN on this device for 7 days" issues a 7-day ADMIN cookie instead of 8 hours; `POST /api/role` accepts `keep: true`.
+- The ADMIN form can be saved by a browser's password manager.
+
 ### Security — ADMIN needs a demo access code (ADR-023)
 
 Anyone could become ADMIN — from the header switcher, by writing the `cyberpulse_role` cookie, or with an `x-cyberpulse-role: ADMIN` header — and so reset demo data or change risk thresholds on a hosted demo. ADMIN now needs the `ADMIN_ACCESS_CODE` value: the header switcher asks for it, `POST /api/role` returns 403 without it, and the resulting cookie is signed (HMAC-SHA256), expires after 8 hours and is `httpOnly`. A hand-written, edited or expired ADMIN cookie, and the header claiming ADMIN, resolve to LEA. Every other role still switches freely. No migration.

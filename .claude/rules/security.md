@@ -65,7 +65,7 @@ The ML service holds no database credentials and cannot write state. A compromis
 
 ## Authentication — read this before assuming
 
-**There is no authentication.** No person is ever identified. The role selector is a demonstration affordance (ADR-019), and every role except ADMIN is asserted, never verified. ADMIN alone needs the shared demo access code and travels in a signed, expiring, `httpOnly` cookie (ADR-023). Never describe any of this as user login, and never weaken the ADMIN check: no unsigned ADMIN cookie, no ADMIN from the `x-cyberpulse-role` header.
+**There is no authentication.** No person is ever identified. The role selector is a demonstration affordance (ADR-019), and every role except ADMIN is asserted, never verified. ADMIN alone needs the shared demo access code and travels in a signed, expiring, `httpOnly` cookie (ADR-023). Never describe any of this as user login, and never weaken the ADMIN check: no unsigned ADMIN cookie, no ADMIN from the `x-cyberpulse-role` header. The code is deliberately shown in the role switcher for judging (ADR-023 amendment), which makes ADMIN open to anyone with the link; say so wherever ADMIN protection is described.
 
 Authorisation over an asserted role is still enforced and still tested (66 cases). That is what makes the boundary demonstrable.
 
