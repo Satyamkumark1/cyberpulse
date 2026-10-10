@@ -17,6 +17,9 @@ import {
   ACTOR_ROLES,
   RECORD_ORIGINS,
   ATM_STATUSES,
+  NOTIFICATION_KINDS,
+  NOTIFICATION_CHANNELS,
+  NOTIFICATION_STATUSES,
 } from "@cyberpulse/shared/enums";
 
 // Postgres enums so an invalid value cannot be written by any client
@@ -39,3 +42,6 @@ export const priorityLevel = pgEnum("priority_level", PRIORITY_LEVELS);
 export const actorRole = pgEnum("actor_role", ACTOR_ROLES);
 export const recordOrigin = pgEnum("record_origin", RECORD_ORIGINS);
 export const atmStatus = pgEnum("atm_status", ATM_STATUSES);
+export const notificationKind = pgEnum("notification_kind", NOTIFICATION_KINDS);
+export const notificationChannel = pgEnum("notification_channel", NOTIFICATION_CHANNELS);
+export const notificationStatus = pgEnum("notification_status", NOTIFICATION_STATUSES);

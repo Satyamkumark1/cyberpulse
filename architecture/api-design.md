@@ -56,7 +56,7 @@ Single resources return the object directly. There is no `{ "data": {...} }` wra
 | Header | Direction | Purpose |
 |---|---|---|
 | `x-request-id` | both | Correlation; generated if absent, propagated to the ML service, echoed back |
-| `x-cyberpulse-role` | request | Prototype role selection for any role except ADMIN (ADR-023); **not a security credential** and documented as such |
+| `x-cyberpulse-role` | request | Prototype role selection; set by `middleware.ts` from the tab's `?as=` (ADR-024); **not a security credential** and documented as such |
 | `Retry-After` | response | On 429 and on 503 during ML warm-up |
 | `Cache-Control` | response | `no-store` on every prediction and alert endpoint |
 
@@ -381,10 +381,13 @@ Overall status is `healthy`, `degraded` (any component degraded or warming) or `
 ADMIN or the demo route. Deletes, in one transaction and in dependency order, `origin = 'DEMO'` alerts and investigations, and every `DEMO`-origin complaint (FEAT-17 citizen reports) with the predictions, investigations and alerts that depend on it whatever their own origin. Idempotent. Returns `{ "alertsCleared": 2, "investigationsCleared": 1, "complaintsCleared": 1 }`. Cannot touch seed data — the `origin` filter is the guarantee. **Tests:** TC-API-060, TC-E2E-021, TC-SAFE-020
 
 ### API-091 · `POST /api/role`
-`{ "role": "BANK" }`. Sets the prototype role in an `httpOnly` cookie. Documented in `security/auth-strategy.md` as **not a security control** for every role except ADMIN. ADMIN (ADR-023) requires `{ "role": "ADMIN", "accessCode": "…" }` matching `ADMIN_ACCESS_CODE`; a missing or wrong code returns 403 `FORBIDDEN`. The ADMIN cookie is signed and expires after 8 hours, or 7 days with `"keep": true`. The code is shown in the role switcher for judging (ADR-023 amendment). **Tests:** TC-UI-080, TC-API-091
+`{ "role": "BANK" }`. Sets the prototype role cookie, used by a tab with no `?as=` in its address. Documented in `security/auth-strategy.md` as **not a security control**. The header switcher no longer calls it: it opens each role in a new tab (ADR-024). **Tests:** TC-UI-080, TC-API-091
 
 ### API-100 · `POST /api/citizen/reports`
 FEAT-17, ADR-022. CITIZEN only (`/safety` always sends `x-cyberpulse-role: CITIZEN`). Body, strict: `{ "fraudType": "UPI_FRAUD", "amountPaise": 4500000, "city": "Mumbai" }` — `amountPaise` an integer from 100 to 10,00,00,000,00; `city` one of the seeded cities (else 400, `field: "city"`). Any of `complaintId`, `status`, `origin`, `victimLat`, `victimLon`, `victimH3R8`, `district`, `state`, `complaintTimestamp` → 400 naming the field. Creates a `DEMO`-origin complaint (ID from `citizen_complaint_seq`, coordinates the seeded centroid of the city), a `citizen_reports` row and a `CITIZEN_REPORT_SUBMITTED` audit event in one transaction. Returns 201 `{ "complaintId": "C-90018", "trackingCode": "2WWM-ZEWZ-2QON-DMSE" }`; the code is returned once and stored only as a hash. 5/min per IP. **Tests:** TC-SAFE-010 … TC-SAFE-015
+
+### API-110 · `GET /api/notifications`
+DEC-020. Query, strict: `channel` (`DASHBOARD` default | `WEBHOOK`), `limit` (1–50, default 20). Requires `alerts:read`; returns `{ data: NotificationItem[] }` (`@cyberpulse/shared/notifications`), newest first, limited by query predicate to the recipient groups the role may read (LEA → LEA, BANK → BANK and ATM_SITE, I4C → I4C, ADMIN → all). Webhook items are always `SIMULATED`. `Cache-Control: no-store`. **Tests:** `notificationService.int.test.ts`, `tests/demo/notifications.spec.ts`
 
 ### API-101 · `POST /api/citizen/reports/status`
 CITIZEN only. POST so the tracking code travels in a body, never a URL or log line. Body, strict: `{ "complaintId": "C-90018", "trackingCode": "2wwm zewz 2qon dmse" }` — any case, dashes and spaces optional. Returns 200 `{ "complaintId", "stage", "updatedAt" }`, where `stage` ∈ `RECEIVED`, `UNDER_REVIEW`, `ALERT_SENT`, `RESOLVED`, derived from the investigation status when one exists, else the complaint status. The response schema is strict, so no prediction field can leave. A wrong code, an unknown ID and a seeded (non-citizen) complaint are all the same 404. **Tests:** TC-SAFE-016 … TC-SAFE-018
@@ -458,6 +461,7 @@ Model version, artefact load time, inference latency histogram, request counts b
 | API-091 | POST | `/api/role` | all | 30/min | TC-UI-080 |
 | API-100 | POST | `/api/citizen/reports` | CITIZEN | 5/min per IP | TC-SAFE-010 … 015 |
 | API-101 | POST | `/api/citizen/reports/status` | CITIZEN | 120/min | TC-SAFE-016 … 018 |
+| API-110 | GET | `/api/notifications` | LEA, BANK, I4C, ADMIN | 120/min | notificationService.int.test.ts |
 
 `*` BANK access is scoped to objects reachable through alerts addressed to BANK; out-of-scope objects return 404.
 

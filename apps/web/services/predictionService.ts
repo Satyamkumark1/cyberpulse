@@ -9,6 +9,8 @@ import { complaintScope } from "./lib/scope";
 import { computeExposurePaise } from "./lib/exposure";
 import { candidatesForComplaint } from "./hotspotService";
 import { callPredict } from "./mlClient";
+import * as notificationService from "./notificationService";
+import { HIGH_RISK_NOTICE_RECIPIENTS } from "./lib/notifications";
 
 const { complaints, transactions, accounts, withdrawals, hotspots, predictions, riskFactors, settings } = dbSchema;
 
@@ -277,6 +279,29 @@ export async function predict(input: PredictInput, ctx: RequestContext): Promise
           )
           .returning()
       : [];
+
+    // DEC-020: a HIGH-risk forecast notifies LEA and I4C automatically. It is
+    // a notice, not an alert — queueing an alert stays an officer's decision.
+    if (predictionRow.riskLevel === "HIGH") {
+      await notificationService.record(tx, {
+        kind: "HIGH_RISK_NOTICE",
+        alertRowId: null,
+        alertId: null,
+        predictionRowId: predictionRow.id,
+        recipients: HIGH_RISK_NOTICE_RECIPIENTS,
+        origin: ctx.origin,
+        prediction: {
+          predictionRef: predictionRow.predictionRef,
+          complaintId: complaint.complaintId,
+          riskLevel: predictionRow.riskLevel,
+          riskScore: predictionRow.riskScore,
+          predictedStart: predictionRow.predictedStart,
+          predictedEnd: predictionRow.predictedEnd,
+          estimatedExposurePaise: predictionRow.estimatedExposurePaise,
+        },
+        location: { name: hotspotRow.name, district: hotspotRow.district, state: hotspotRow.state, latitude: hotspotRow.latitude, longitude: hotspotRow.longitude },
+      });
+    }
 
     return { hotspot: hotspotRow, prediction: predictionRow, factors: factorRows };
   });

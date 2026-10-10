@@ -160,6 +160,9 @@ Priority uses MoSCoW. **Must** requirements are release-blocking.
 | FR-14.3 | Alert dispatch shall write an audit event capturing actor role, alert ID, prediction ID and timestamp | Must | T | TC-SEC-030 | P5 |
 | FR-14.4 | Alert acknowledgement shall be recorded with a timestamp and shall be idempotent | Must | T | TC-API-032 | P5 |
 | FR-14.5 | Alert creation shall be rate limited per role | Must | T | TC-SEC-031 | P5 |
+| FR-14.6 | Dispatching an alert shall create one dashboard notification and one simulated webhook message per recipient group, in the alert's transaction (DEC-020) | Must | T | notificationService.int.test.ts | post-P9 |
+| FR-14.7 | A HIGH-risk prediction shall automatically notify LEA and I4C with a notice that is not an alert; queueing an alert stays an officer's decision (DEC-020) | Must | T | notificationService.int.test.ts | post-P9 |
+| FR-14.8 | Notifications shall be visible only to the recipient groups a role may read (BANK: BANK and ATM site), and webhook messages shall be recorded as SIMULATED, never sent (DEC-020) | Must | T | notificationService.int.test.ts, tests/demo/notifications.spec.ts | post-P9 |
 
 ## 1.12 Investigation Workflow (FEAT-12)
 

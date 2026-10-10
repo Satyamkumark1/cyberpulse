@@ -174,6 +174,28 @@ Reversible:  Yes / No / At what cost
 **Consequences.** At most two calls per request, plus at most one language retry in the chat route — so a chat request can make up to four Groq calls. New env var in `.env.example`; Vercel and preview environments need it set for the failover to apply. Without it, behaviour is unchanged.
 **Reversible.** Unset `GROQ_API_KEY_FALLBACK`.
 
+### DEC-017 · The risk score is shown out of 100, never as a percentage
+**Date** 2026-10-10 · **Decided by** Project owner · **Phase** pre-finale
+**Context.** The displayed risk score is the blended ranking score (45% calibrated classifier probability, 55% documented domain terms, `apps/ml-service/app/engine/hotspot.py`). `model_card.json` states it "is a ranking score, not a calibrated cash-out probability", but the UI rendered it as `85.0%`, which a reader takes as an 85% chance of withdrawal. The factors panel explains only the classifier's share, and its heading did not say so.
+**Decision.** `formatRiskScore` renders `85.0 / 100` with a "Risk score" label and the note "Ranks candidate areas. Not a probability that cash will be withdrawn." The factors panel is headed "Model factors" and says the rest of the score comes from documented rules. Factor contributions stay percentages: they are shares of the explanation. This changes `.claude/rules/frontend.md` §Formatting and `ux/ui-guidelines.md`. Degraded-mode absence tests also assert no `NN / 100` appears.
+**Consequences.** Every score display changes in one formatter. Wireframes keep their old placeholder figures; they are layout references only.
+**Reversible.** Restore the formatter's `%` output.
+
+### DEC-018 · The risk classifier keeps `max_depth=6`
+**Date** 2026-10-10 · **Decided by** Project owner · **Phase** pre-finale
+**Context.** `.claude/rules/ai.md`, `ai/model-selection.md` and `docs/ml-pipeline.md` said `max_depth=5, not deeper`, but `training/train.py` uses 6: the winner of the documented grid search (`training/search_hyperparams.py`, depths 3–6, scored by top-3 hit rate on the calibration split, never the holdout).
+**Decision.** Keep 6, the measured choice, and change the documents to match. The concern behind the old rule, memorising the generator, is checked by measurement instead of a fixed cap: the holdout is touched once, the shuffled-label ablation must collapse to chance (TC-ML-071, enforced by `evaluate.py`), and the search grid stops at 6.
+**Consequences.** Depths above 6 still need a new search and a decision entry.
+**Reversible.** Set `max_depth` to 5, retrain and re-run every gate.
+
+### DEC-020 · Notifications: live dashboard alerts, simulated webhooks, automatic HIGH-risk notices
+**Date** 2026-10-10 · **Decided by** Project owner · **Phase** post-P9
+**Context.** The requirement "real-time notifications to law enforcement, banks and I4C via SMS, email, API or dashboard triggers". SMS and email would need stored phone numbers or addresses (forbidden: no personal-data column, DEC-010) and real delivery would contradict NG-01 and the "internal alert" wording.
+**Decision.** Two channels. **Dashboard:** a header bell, polling every 10 s, for roles with `alerts:read`. **Webhook:** each message built exactly as it would be POSTed to a partner system and recorded in `notifications` with status `SIMULATED`, shown on `/outbox`; nothing leaves the prototype. Messages are addressed to recipient groups, never people. Dispatching an alert writes them inside the alert's transaction. A HIGH-risk prediction also writes an automatic **notice** to LEA and I4C — explicitly not an alert, so the rule that queueing an alert is a human decision stands. BANK gets no automatic notices: it sees only cases alerted to it. Two new service compositions: `alertService` → `notificationService` and `predictionService` → `notificationService`, both passing the caller's transaction.
+**Options rejected.** SMS and email (personal data, external providers, demo-day dependency); automatic **alerts** on HIGH risk (removes the human decision).
+**Consequences.** Migration `0008_add_notifications` (additive). `GET /api/notifications` (API-110, reads limit). Demo reset clears `origin = 'DEMO'` notifications. Real delivery later means configuring partner endpoints, signing payloads and a retry worker — none built.
+**Reversible.** Drop the table (rollback note in the migration) and remove the bell, outbox and the two `record` calls.
+
 ---
 
 ## Scope Change Protocol

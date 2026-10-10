@@ -4,7 +4,8 @@ import { Disclaimer } from "@/components/common/Disclaimer";
 import { PrototypeBadge } from "@/components/common/PrototypeBadge";
 import { RoleSwitcher } from "@/components/common/RoleSwitcher";
 import { StatePanel } from "@/components/common/StatePanel";
-import { demoAdminAccessCode, resolveRoleFromNextHeaders } from "@/services/lib/auth";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { hasCapability, resolveRoleFromNextHeaders } from "@/services/lib/auth";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const role = await resolveRoleFromNextHeaders();
@@ -21,7 +22,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-4 text-slate-800 lg:px-8">
             <span className="text-sm font-medium text-slate-600">Decision-support workspace</span>
             <div className="flex flex-wrap items-center gap-4">
-              <RoleSwitcher role={role} demoCode={demoAdminAccessCode()} />
+              {hasCapability(role, "alerts:read") && <NotificationBell role={role} />}
+              <RoleSwitcher role={role} />
               <PrototypeBadge />
             </div>
           </header>
@@ -41,7 +43,7 @@ function CitizenGate() {
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-4 lg:px-8">
         <span className="text-sm font-medium text-slate-600">Decision-support workspace</span>
         <div className="flex flex-wrap items-center gap-4">
-          <RoleSwitcher role="CITIZEN" demoCode={demoAdminAccessCode()} />
+          <RoleSwitcher role="CITIZEN" />
           <PrototypeBadge />
         </div>
       </header>

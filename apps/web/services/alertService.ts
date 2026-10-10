@@ -7,8 +7,9 @@ import { bankCanSeeRecipients, bankRecipientPredicate } from "./lib/scope";
 import * as auditService from "./auditService";
 import { deriveSeverity } from "./lib/severity";
 import { upsertForAlert } from "./investigationService";
+import * as notificationService from "./notificationService";
 
-const { alerts, predictions, hotspots, riskFactors, investigations } = dbSchema;
+const { alerts, predictions, hotspots, riskFactors, investigations, complaints } = dbSchema;
 
 export interface CreateAlertInput {
   predictionRef: string;
@@ -140,6 +141,33 @@ export async function create(input: CreateAlertInput, ctx: RequestContext) {
         recipients: dedupedRecipients,
         investigationCaseId: investigation.caseId,
       },
+    });
+
+    // DEC-020: a dashboard message and a simulated webhook per recipient
+    // group, committed with the alert and its audit event.
+    const [complaintRow] = await tx
+      .select({ complaintId: complaints.complaintId })
+      .from(complaints)
+      .where(eq(complaints.id, currentPrediction.complaintId))
+      .limit(1);
+    if (!complaintRow) throw new NotFoundError();
+    await notificationService.record(tx, {
+      kind: "ALERT_DISPATCHED",
+      alertRowId: insertedAlert.id,
+      alertId: finalAlertId,
+      predictionRowId: currentPrediction.id,
+      recipients: dedupedRecipients,
+      origin: ctx.origin,
+      prediction: {
+        predictionRef: currentPrediction.predictionRef,
+        complaintId: complaintRow.complaintId,
+        riskLevel: currentPrediction.riskLevel,
+        riskScore: currentPrediction.riskScore,
+        predictedStart: windowStart,
+        predictedEnd: windowEnd,
+        estimatedExposurePaise: exposurePaise,
+      },
+      location: { name: hotspot.name, district: hotspot.district, state: hotspot.state, latitude: hotspot.latitude, longitude: hotspot.longitude },
     });
 
     return {

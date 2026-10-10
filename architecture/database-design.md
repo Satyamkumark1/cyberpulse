@@ -344,6 +344,10 @@ Citizen complaint IDs come from `citizen_complaint_seq` (`START 90000 MINVALUE 9
 
 ---
 
+### 4.18 `notifications` (DEC-020, migration 0008)
+
+One row per message. `kind` (`ALERT_DISPATCHED` | `HIGH_RISK_NOTICE`), `channel` (`DASHBOARD` | `WEBHOOK`), `recipient` (a `recipient_kind` group, never a person), `alert_id` (FK, cascade; set exactly when `kind = 'ALERT_DISPATCHED'`, by CHECK), `prediction_id` (FK, cascade), `payload` (jsonb: the exact body shown or recorded), `status` (`DELIVERED` for dashboard, `SIMULATED` for webhook, by CHECK), `origin`, `created_at`. No phone, email or name column. Index `idx_notifications_channel_recipient_created` serves the bell and the outbox (`channel`, `recipient`, newest first).
+
 ## 5. Indexes and Their Justification
 
 | Index | Table | Columns | Serves |

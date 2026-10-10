@@ -50,6 +50,13 @@
       "when": 1791562515051,
       "tag": "0007_drop_hotspots_score_index",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791624923839,
+      "tag": "0008_add_notifications",
+      "breakpoints": true
     }
   ]
 }
