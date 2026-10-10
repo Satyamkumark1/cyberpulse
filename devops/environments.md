@@ -114,6 +114,7 @@ The evaluation environment. "Production" is a slight misnomer — it serves demo
 | `NEXT_PUBLIC_MAP_TILE_URL` | Public demo tiles | Same | Same |
 | `NEXT_PUBLIC_DEMO_MODE` | `true` | `true` | `true` |
 | `NEXT_PUBLIC_ANALYTICS_ENABLED` | `true` | `false` | `true` |
+| `ADMIN_ACCESS_CODE` | Generated, in `apps/web/.env.local` | Own value per preview | Own value, shared only with presenters |
 | `DATA_SEED` | `26184` | `26184` | `26184` |
 | `LOG_LEVEL` | `debug` | `info` | `info` |
 | `MODEL_DIR` | `./models` (read-only mount) | Baked into the image | Baked into the image |

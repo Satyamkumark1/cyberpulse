@@ -8,6 +8,10 @@ const EnvSchema = z.object({
   DATABASE_URL: z.string().url(),
   ML_SERVICE_URL: z.string().url(),
   NEXT_PUBLIC_MAP_TILE_URL: z.string().url(),
+  // ADR-023: the shared code that unlocks the ADMIN prototype role, and the
+  // key its signed cookie derives from. Long enough that the 30/min role
+  // switch rate limit makes guessing it impractical.
+  ADMIN_ACCESS_CODE: z.string().min(12),
   REDIS_URL: z.preprocess((value) => value === "" ? undefined : value, z.string().url().optional()),
   GROQ_API_KEY: z.string().min(20).optional(),
   // DEC-016: tried when GROQ_API_KEY is rate-limited, rejected or Groq errors.

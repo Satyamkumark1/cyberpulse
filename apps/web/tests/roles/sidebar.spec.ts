@@ -87,3 +87,34 @@ test("choosing CITIZEN in the role switcher opens the citizen pages", async ({ p
 
   await expect(page).toHaveURL(/\/safety$/);
 });
+
+// ADR-023: ADMIN is the one role that needs the demo access code.
+test("choosing ADMIN asks for the access code and refuses a wrong one", async ({ page, context, baseURL }) => {
+  await context.addCookies([{ name: "cyberpulse_role", value: "LEA", url: baseURL! }]);
+  await page.goto("/dashboard");
+
+  await page.getByLabel("Prototype role").selectOption("ADMIN");
+  await page.getByLabel("ADMIN access code").fill("not-the-access-code");
+  await page.getByRole("button", { name: "Switch" }).click();
+
+  await expect(page.getByRole("status").filter({ hasText: "Access code not accepted." })).toBeVisible();
+  await expect(page.getByLabel("Prototype role")).toHaveValue("LEA");
+});
+
+test("the right access code switches to ADMIN", async ({ page, context, baseURL }) => {
+  await context.addCookies([{ name: "cyberpulse_role", value: "LEA", url: baseURL! }]);
+  await page.goto("/dashboard");
+
+  await page.getByLabel("Prototype role").selectOption("ADMIN");
+  await page.getByLabel("ADMIN access code").fill(process.env.ADMIN_ACCESS_CODE ?? "");
+  await page.getByRole("button", { name: "Switch" }).click();
+
+  await expect(page.getByLabel("Prototype role")).toHaveValue("ADMIN");
+});
+
+test("a hand-written ADMIN cookie gets LEA, not ADMIN", async ({ page, context, baseURL }) => {
+  await context.addCookies([{ name: "cyberpulse_role", value: "ADMIN", url: baseURL! }]);
+  await page.goto("/dashboard");
+
+  await expect(page.getByLabel("Prototype role")).toHaveValue("LEA");
+});

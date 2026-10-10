@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { DEMO_COMPLAINT_IDS } from "../../../../packages/shared/constants.ts";
+import { becomeAdmin } from "../support/admin";
 
 // TC-E2E-022 — one-click scenario (FR-19.1, AC-014-01).
 // TC-UI-070 — scenario control behaviour (FR-19).
@@ -230,8 +231,8 @@ test("demo reset names the role it needs instead of reporting a failure", async 
   await expect(dialog.getByRole("button", { name: "Confirm reset" })).toBeDisabled();
 });
 
-test("demo reset previews exact counts for a role that holds the capability", async ({ page, context }) => {
-  await context.addCookies([{ name: "cyberpulse_role", value: "ADMIN", url: "http://localhost:3000" }]);
+test("demo reset previews exact counts for a role that holds the capability", async ({ page }) => {
+  await becomeAdmin(page.request);
   await page.goto("/demo");
 
   await page.getByRole("button", { name: "Reset Demo" }).click();

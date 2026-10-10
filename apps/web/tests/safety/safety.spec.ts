@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { becomeAdmin } from "../support/admin";
 
 // FEAT-17 Scam Shield — TC-SAFE-030 … TC-SAFE-039. Runs at phone size: a
 // citizen is most likely to be on a phone when the call comes in.
@@ -27,7 +28,8 @@ async function lookUp(page: Page, complaintId: string, trackingCode: string) {
 }
 
 test.afterAll(async ({ request }: { request: APIRequestContext }) => {
-  await request.post("/api/demo/reset", { headers: { "x-cyberpulse-role": "ADMIN" } });
+  await becomeAdmin(request);
+  await request.post("/api/demo/reset");
 });
 
 test("TC-SAFE-035: badge, disclaimer and report notice are on every /safety route, in both languages", async ({ page }) => {

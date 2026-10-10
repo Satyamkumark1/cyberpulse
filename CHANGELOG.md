@@ -10,6 +10,12 @@ Change-management rules — what must accompany each kind of change — are defi
 
 ## [Unreleased]
 
+### Security — ADMIN needs a demo access code (ADR-023)
+
+Anyone could become ADMIN — from the header switcher, by writing the `cyberpulse_role` cookie, or with an `x-cyberpulse-role: ADMIN` header — and so reset demo data or change risk thresholds on a hosted demo. ADMIN now needs the `ADMIN_ACCESS_CODE` value: the header switcher asks for it, `POST /api/role` returns 403 without it, and the resulting cookie is signed (HMAC-SHA256), expires after 8 hours and is `httpOnly`. A hand-written, edited or expired ADMIN cookie, and the header claiming ADMIN, resolve to LEA. Every other role still switches freely. No migration.
+
+**New required variable:** `ADMIN_ACCESS_CODE` (at least 12 characters) in every environment; the app refuses to boot without it. Set it in Vercel before the next deploy.
+
 ### Model — evaluation scores ties fairly; TC-ML-071 now blocks release
 
 The model is unchanged (same `risk_model.joblib` and `temporal_model.joblib` hashes) and so is every gated metric; only `model_card.json` and `bundle_manifest.json` were re-promoted (bundle `CyberPulse-Demo-v1-ac16dc3311c7`).

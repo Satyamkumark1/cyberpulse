@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { ForbiddenError } from "@/lib/errors";
-import { requireCapability, requireAdminOrDemo, resolveOrigin, resolveRole } from "./auth";
+import {
+  ADMIN_SESSION_TTL_MS,
+  issueRoleCookie,
+  requireCapability,
+  requireAdminOrDemo,
+  resolveOrigin,
+  resolveRole,
+} from "./auth";
+
+const NOW_MS = Date.UTC(2026, 9, 10, 6, 0, 0);
+const withCookie = (value: string) =>
+  new Request("http://localhost/api/complaints", { headers: { cookie: `cyberpulse_role=${value}` } });
 
 describe("resolveRole", () => {
   it("resolves from the x-cyberpulse-role header when present", () => {
@@ -9,8 +20,7 @@ describe("resolveRole", () => {
   });
 
   it("falls back to the cookie when no header is present", () => {
-    const req = new Request("http://localhost/api/complaints", { headers: { cookie: "cyberpulse_role=ADMIN" } });
-    expect(resolveRole(req)).toBe("ADMIN");
+    expect(resolveRole(withCookie("BANK"))).toBe("BANK");
   });
 
   it("falls back to LEA, never ADMIN, for an unrecognised role (TC-SEC-010)", () => {
@@ -25,9 +35,61 @@ describe("resolveRole", () => {
 
   it("prefers the header over the cookie when both are present", () => {
     const req = new Request("http://localhost/api/complaints", {
-      headers: { "x-cyberpulse-role": "ADMIN", cookie: "cyberpulse_role=BANK" },
+      headers: { "x-cyberpulse-role": "I4C", cookie: "cyberpulse_role=BANK" },
     });
-    expect(resolveRole(req)).toBe("ADMIN");
+    expect(resolveRole(req)).toBe("I4C");
+  });
+});
+
+describe("resolveRole — ADMIN must be earned with the access code (ADR-023)", () => {
+  const signedAdmin = () => issueRoleCookie("ADMIN", process.env.ADMIN_ACCESS_CODE, NOW_MS).value;
+
+  it("resolves a signed ADMIN cookie within its lifetime", () => {
+    expect(resolveRole(withCookie(signedAdmin()), NOW_MS + ADMIN_SESSION_TTL_MS - 1)).toBe("ADMIN");
+  });
+
+  it("drops an ADMIN cookie to LEA once it expires", () => {
+    expect(resolveRole(withCookie(signedAdmin()), NOW_MS + ADMIN_SESSION_TTL_MS)).toBe("LEA");
+  });
+
+  it("drops a hand-written ADMIN cookie to LEA", () => {
+    expect(resolveRole(withCookie("ADMIN"), NOW_MS)).toBe("LEA");
+  });
+
+  it("drops an ADMIN cookie with an edited expiry to LEA", () => {
+    const [, expiresAt, signature] = signedAdmin().split(".");
+    const extended = `ADMIN.${Number(expiresAt) + ADMIN_SESSION_TTL_MS}.${signature}`;
+    expect(resolveRole(withCookie(extended), NOW_MS + ADMIN_SESSION_TTL_MS)).toBe("LEA");
+  });
+
+  it("never grants ADMIN from the role header", () => {
+    const req = new Request("http://localhost/api/demo/reset", { headers: { "x-cyberpulse-role": "ADMIN" } });
+    expect(resolveRole(req, NOW_MS)).toBe("LEA");
+  });
+
+  it("lets the header lower a signed ADMIN cookie to another role", () => {
+    const req = new Request("http://localhost/api/complaints", {
+      headers: { "x-cyberpulse-role": "BANK", cookie: `cyberpulse_role=${signedAdmin()}` },
+    });
+    expect(resolveRole(req, NOW_MS)).toBe("BANK");
+  });
+});
+
+describe("issueRoleCookie (ADR-023)", () => {
+  it("refuses ADMIN with a wrong access code", () => {
+    expect(() => issueRoleCookie("ADMIN", "not-the-code", NOW_MS)).toThrow(ForbiddenError);
+  });
+
+  it("refuses ADMIN with no access code", () => {
+    expect(() => issueRoleCookie("ADMIN", undefined, NOW_MS)).toThrow(ForbiddenError);
+  });
+
+  it("issues an ADMIN cookie that lasts the session lifetime", () => {
+    expect(issueRoleCookie("ADMIN", process.env.ADMIN_ACCESS_CODE, NOW_MS).maxAgeSeconds).toBe(ADMIN_SESSION_TTL_MS / 1000);
+  });
+
+  it.each(["LEA", "BANK", "GUARD", "I4C", "CITIZEN"] as const)("issues %s without an access code", (role) => {
+    expect(issueRoleCookie(role, undefined, NOW_MS)).toEqual({ value: role });
   });
 });
 
