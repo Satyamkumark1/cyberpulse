@@ -5,7 +5,7 @@ import { RoleSwitcher } from "@/components/common/RoleSwitcher";
 import { StatePanel } from "@/components/common/StatePanel";
 import { DemoResetControl } from "@/components/demo/DemoResetControl";
 import { DemoWalkthrough } from "@/components/demo/DemoWalkthrough";
-import { demoAdminAccessCode, resolveRoleFromNextHeaders } from "@/services/lib/auth";
+import { resolveRoleFromNextHeaders } from "@/services/lib/auth";
 
 // engineering/folder-structure.md §2: standalone shell, no sidebar — the
 // walkthrough surface used for live demonstrations.
@@ -19,7 +19,7 @@ export default async function DemoPage() {
           <div><span className="block text-sm font-semibold">CyberPulse AI</span><span className="block text-[10px] uppercase tracking-[0.16em] text-slate-400">Demonstration walkthrough</span></div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <RoleSwitcher role={role} dark demoCode={demoAdminAccessCode()} />
+          <RoleSwitcher role={role} dark />
           <DemoResetControl />
           <PrototypeBadge />
         </div>

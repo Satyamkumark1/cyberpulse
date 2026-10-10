@@ -126,7 +126,6 @@ jobs:
       DATABASE_URL: "postgres://cyberpulse:cyberpulse@localhost:5432/cyberpulse"
       ML_SERVICE_URL: "http://localhost:8000"
       NEXT_PUBLIC_MAP_TILE_URL: "https://demotiles.maplibre.org/style.json"
-      ADMIN_ACCESS_CODE: "ci-only-admin-access-code"
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -154,5 +153,4 @@ jobs:
           DATABASE_URL: "postgres://cyberpulse:cyberpulse@localhost:5432/cyberpulse"
           ML_SERVICE_URL: "http://localhost:8000"
           NEXT_PUBLIC_MAP_TILE_URL: "https://demotiles.maplibre.org/style.json"
-          ADMIN_ACCESS_CODE: "ci-only-admin-access-code"
       - run: docker build -f docker/Dockerfile.ml -t cyberpulse-ml:ci .

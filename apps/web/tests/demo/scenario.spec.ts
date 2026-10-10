@@ -1,6 +1,5 @@
 import { expect, test } from "@playwright/test";
 import { DEMO_COMPLAINT_IDS } from "../../../../packages/shared/constants.ts";
-import { becomeAdmin } from "../support/admin";
 
 // TC-E2E-022 — one-click scenario (FR-19.1, AC-014-01).
 // TC-UI-070 — scenario control behaviour (FR-19).
@@ -66,7 +65,7 @@ test("each run-summary row reports its own prediction response", async ({ page }
     const p = responses.get(id)!;
     const row = summary.locator("li").filter({ has: page.getByText(id, { exact: true }) }).first();
     await expect(row).toContainText(p.modelVersion);
-    await expect(row).toContainText(`${(p.riskScore * 100).toFixed(1)}%`);
+    await expect(row).toContainText(`${(p.riskScore * 100).toFixed(1)} / 100`);
     await expect(row).toContainText(p.predictedLocation.name);
   }
 });
@@ -93,6 +92,7 @@ test("one failed prediction degrades only its row and does not block the run", a
   // score, window or exposure currency. Stage 1's reported amount is allowed.
   for (let index = 0; index < 5; index++) {
     await expect(predictionStages.nth(index)).not.toHaveText(/\d+(\.\d+)?%/);
+    await expect(predictionStages.nth(index)).not.toHaveText(/\d+(\.\d+)?\s*\/\s*100/);
     await expect(predictionStages.nth(index)).not.toHaveText(/₹[\d,]+/);
     await expect(predictionStages.nth(index)).not.toHaveText(/\d{2}:\d{2}\s*[–-]\s*\d{2}:\d{2}/);
   }
@@ -231,8 +231,8 @@ test("demo reset names the role it needs instead of reporting a failure", async 
   await expect(dialog.getByRole("button", { name: "Confirm reset" })).toBeDisabled();
 });
 
-test("demo reset previews exact counts for a role that holds the capability", async ({ page }) => {
-  await becomeAdmin(page.request);
+test("demo reset previews exact counts for a role that holds the capability", async ({ page, context }) => {
+  await context.addCookies([{ name: "cyberpulse_role", value: "ADMIN", url: "http://localhost:3000" }]);
   await page.goto("/demo");
 
   await page.getByRole("button", { name: "Reset Demo" }).click();

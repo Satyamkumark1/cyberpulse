@@ -15,7 +15,6 @@ export default defineConfig({
       DATABASE_URL: "postgres://cyberpulse:cyberpulse@localhost:5432/cyberpulse",
       ML_SERVICE_URL: "http://localhost:8000",
       NEXT_PUBLIC_MAP_TILE_URL: "https://demotiles.maplibre.org/style.json",
-      ADMIN_ACCESS_CODE: "unit-test-admin-code",
     },
   },
 });

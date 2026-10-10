@@ -35,7 +35,7 @@ POST /api/role  { "role": "BANK" }
 
 Sets an `httpOnly`, same-site cookie carrying the selected role. Subsequent requests resolve the role from that cookie, or from an `x-cyberpulse-role` header when present (which is how the test suite exercises role boundaries).
 
-ADMIN is the exception (ADR-023): `{ "role": "ADMIN", "accessCode": "…" }` must carry the `ADMIN_ACCESS_CODE` value, or the switch returns 403. The cookie is then `ADMIN.<expiresAtMs>.<HMAC-SHA256>`, valid for 8 hours, with the key derived from the access code. The header can never claim ADMIN.
+Each role in the header switcher opens its home page in a new tab carrying `?as=ROLE` (ADR-024). `middleware.ts` turns that into the `x-cyberpulse-role` header for the page, keeps `?as=` on the address when the tab follows a link, and gives an API call the role of the tab that made it (read from the same-site `Referer`). Precedence: an explicit header, then `?as=` on the request, then `?as=` on the calling page, then the cookie. No role, ADMIN included, needs a code (ADR-023 is superseded).
 
 The `/safety` pages (FEAT-17) always send `x-cyberpulse-role: CITIZEN`, so the citizen side never depends on the cookie. CITIZEN is asserted exactly like every other role (ADR-022); what protects a citizen's report status is the one-time tracking code, not the role.
 
@@ -113,13 +113,12 @@ Step 2 is the only step touching application logic, because authorisation is alr
 
 | Threat | Accepted because | Bounded by |
 |---|---|---|
-| Any caller can assume any role except ADMIN | No real data exists; the non-ADMIN roles only demonstrate boundaries | Synthetic-only constraint (CR-01); ADMIN needs the access code (ADR-023) |
+| Any caller can assume any role, ADMIN included | No real data exists | Synthetic-only constraint (CR-01) |
 | No attribution beyond role | Prototype audit demonstrates the mechanism, not real accountability | Declared in `security/security-checklist.md` |
-| ADMIN code shown in the role switcher | Judges use ADMIN on their own devices (ADR-023 amendment) | Anyone who can open the app can become ADMIN; remove the display and rotate the code to close it |
-| One ADMIN code shared by every user of it | No identities exist to tell people apart | 8-hour signed cookie, or 7 days with "Keep ADMIN on this device"; changing the code ends every ADMIN session |
+| No session expiry | No credential to expire | — |
 | Non-ADMIN role cookies never expire | They grant nothing a caller could not claim anyway | — |
 
-The cookie is `httpOnly` because for ADMIN it is a bearer token (ADR-023). For every other role it still grants nothing a caller could not claim with a header, and the code and the UI both say so.
+The role cookie is not `httpOnly`, and no role needs a code: dressing a demonstration affordance in security clothing makes reviewers trust it more than they should (ADR-024).
 
 ---
 
