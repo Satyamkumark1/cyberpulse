@@ -47,6 +47,8 @@ from training.train import _temporal_bin, train_risk_model
 MODEL_VERSION: Final = "CyberPulse-Demo-v1"
 OPERATING_THRESHOLD: Final = 0.40  # settings.threshold_medium default — the "at least worth flagging" line
 NUM_CALIBRATION_BINS: Final = 10
+BOOTSTRAP_RESAMPLES: Final = 2000
+SHUFFLED_LABEL_TOLERANCE: Final = 0.05  # TC-ML-071
 
 # ai/evaluation-framework.md §2. Release-blocking; a failure here blocks
 # training regardless of how small the miss looks (CLAUDE.md's one rule).
@@ -126,6 +128,85 @@ def random_baseline_top3(df: pd.DataFrame) -> float:
     return float(np.mean(per_complaint))
 
 
+def tie_averaged_top3(df: pd.DataFrame, score_col: str) -> pd.Series:
+    """Per-complaint chance that the true cell is in the top 3 when tied
+    scores are ordered at random. Isotonic calibration maps many cells to one
+    score, and rank_metrics' h3_index tie-break then decides those top-3
+    places in a fixed, non-random order (a scorer with every score tied gets
+    0.1215 on this corpus, against 0.0633 for random). Averaging over tie
+    orders puts a scorer that separates nothing exactly on the random
+    baseline, so comparisons between rankers measure the rankers."""
+    hits: dict[str, float] = {}
+    for complaint_id, group in df.groupby("complaint_id"):
+        scores = group[score_col].to_numpy()
+        true_scores = scores[group["y"].to_numpy() == 1]
+        if true_scores.size == 0:
+            hits[str(complaint_id)] = 0.0
+            continue
+        true_score = true_scores.max()
+        above = int((scores > true_score).sum())
+        tied = int((scores == true_score).sum())
+        hits[str(complaint_id)] = min(max(3 - above, 0), tied) / tied
+    return pd.Series(hits, dtype=float)
+
+
+def paired_bootstrap_ci(columns: dict[str, np.ndarray], seed: int = DATASET_SEED) -> dict[str, list[float]]:
+    """95% percentile intervals, resampling complaints with replacement. One
+    set of resample indices serves every column, so a difference column's
+    interval is the paired interval."""
+    n = len(next(iter(columns.values())))
+    idx = np.random.default_rng(seed).integers(0, n, size=(BOOTSTRAP_RESAMPLES, n))
+    return {
+        name: [float(q) for q in np.percentile(values[idx].mean(axis=1), [2.5, 97.5])]
+        for name, values in columns.items()
+    }
+
+
+def compare_with_history(served_df: pd.DataFrame) -> dict:
+    """The question the baselines exist to answer: does the served ranking
+    beat ranking by past withdrawals? Also scores the slice where history
+    cannot help — reachable complaints whose true cell history does not put
+    in its top 3."""
+    served = tie_averaged_top3(served_df, "composite_score")
+    historical = tie_averaged_top3(served_df, "historical_hotspot_score").reindex(served.index)
+    reachable = served_df.groupby("complaint_id")["y"].max().rename(str).reindex(served.index) == 1
+    novel = reachable & (historical == 0)
+    columns = {
+        "served": served.to_numpy(),
+        "historicalFrequency": historical.to_numpy(),
+        "servedMinusHistorical": (served - historical).to_numpy(),
+    }
+    intervals = paired_bootstrap_ci(columns)
+    return {
+        "metric": "top3_hit_rate, tie-averaged",
+        "bootstrapResamples": BOOTSTRAP_RESAMPLES,
+        "complaints": len(served),
+        **{name: {"value": float(values.mean()), "ci95": intervals[name]} for name, values in columns.items()},
+        "novelHotspots": {
+            "complaints": int(novel.sum()),
+            "servedTop3": float(served[novel].mean()) if novel.any() else None,
+        },
+    }
+
+
+def shuffle_labels_within_complaint(df: pd.DataFrame, seed: int = DATASET_SEED) -> pd.DataFrame:
+    # One generator across groups: a fresh seed per group would apply the
+    # same permutation to every equal-sized complaint.
+    rng = np.random.default_rng(seed)
+    shuffled = df.copy()
+    shuffled["y"] = shuffled.groupby("complaint_id")["y"].transform(lambda s: rng.permutation(s.to_numpy()))
+    return shuffled
+
+
+def check_leakage(ablations: dict[str, float], baselines: dict[str, float]) -> list[str]:
+    """TC-ML-071: shuffled labels must land within 0.05 of random. Only the
+    upper side is leakage; a shuffled model below chance is noise."""
+    shuffled, random = ablations["shuffled_labels"], baselines["random"]
+    ok = shuffled <= random + SHUFFLED_LABEL_TOLERANCE
+    print(f"[{'PASS' if ok else 'FAIL'}] shuffled_labels={shuffled:.4f} (required <= random {random:.4f} + {SHUFFLED_LABEL_TOLERANCE})")
+    return [] if ok else ["shuffled_labels"]
+
+
 def score_holdout(model: CalibratedRiskModel, holdout_df: pd.DataFrame, feature_cols: list[str]) -> pd.DataFrame:
     scored = holdout_df.copy()
     scored["score"] = model.predict_proba(holdout_df[feature_cols].to_numpy())
@@ -168,12 +249,14 @@ def score_served_pipeline(scored: pd.DataFrame) -> pd.DataFrame:
 
 
 def run_ablations(train_df: pd.DataFrame, cal_df: pd.DataFrame, holdout_df: pd.DataFrame) -> dict[str, float]:
-    results: dict[str, float] = {}
+    # Tie-averaged throughout, including the unablated reference, so each
+    # difference is a difference between models, not between tie orders.
+    results: dict[str, float] = {"none_removed": float(tie_averaged_top3(holdout_df, "score").mean())}
     for name, excluded in ABLATION_FEATURE_GROUPS.items():
         cols = [c for c in FEATURE_ORDER if c not in excluded]
         model = train_risk_model(train_df, cal_df, cols)
         scored = score_holdout(model, holdout_df, cols)
-        results[name] = rank_metrics(scored, "score")["top3_hit_rate"]
+        results[name] = float(tie_averaged_top3(scored, "score").mean())
 
     # Shuffled *within* each complaint's own candidates, not across the whole
     # split: many complaints share the same state-wide "historical" candidate
@@ -182,26 +265,22 @@ def run_ablations(train_df: pd.DataFrame, cal_df: pd.DataFrame, holdout_df: pd.D
     # marginal label frequency back through those repeated high-frequency
     # cells; a per-group shuffle destroys the label/feature relationship
     # without that artifact (TC-ML-071).
-    shuffled_train = train_df.copy()
-    shuffled_train["y"] = shuffled_train.groupby("complaint_id")["y"].transform(
-        lambda s: s.sample(frac=1, random_state=DATASET_SEED).to_numpy()
-    )
-    shuffled_model = train_risk_model(shuffled_train, cal_df, FEATURE_ORDER)
+    shuffled_model = train_risk_model(shuffle_labels_within_complaint(train_df), cal_df, FEATURE_ORDER)
     shuffled_scored = score_holdout(shuffled_model, holdout_df, FEATURE_ORDER)
-    results["shuffled_labels"] = rank_metrics(shuffled_scored, "score")["top3_hit_rate"]
+    results["shuffled_labels"] = float(tie_averaged_top3(shuffled_scored, "score").mean())
     return results
 
 
 def run_baselines(train_df: pd.DataFrame, cal_df: pd.DataFrame, holdout_df: pd.DataFrame) -> dict[str, float]:
-    nearest = rank_metrics(holdout_df.assign(neg_distance=-holdout_df["distance_km"]), "neg_distance")["top3_hit_rate"]
-    historical = rank_metrics(holdout_df, "historical_hotspot_score")["top3_hit_rate"]
+    nearest = float(tie_averaged_top3(holdout_df.assign(neg_distance=-holdout_df["distance_km"]), "neg_distance").mean())
+    historical = float(tie_averaged_top3(holdout_df, "historical_hotspot_score").mean())
 
     scaler = StandardScaler().fit(train_df[FEATURE_ORDER])
     logreg = LogisticRegression(max_iter=1000, random_state=DATASET_SEED)
     logreg.fit(scaler.transform(train_df[FEATURE_ORDER]), train_df["y"])
     logreg_scored = holdout_df.copy()
     logreg_scored["logreg_score"] = logreg.predict_proba(scaler.transform(holdout_df[FEATURE_ORDER]))[:, 1]
-    logreg_top3 = rank_metrics(logreg_scored, "logreg_score")["top3_hit_rate"]
+    logreg_top3 = float(tie_averaged_top3(logreg_scored, "logreg_score").mean())
 
     return {
         "random": random_baseline_top3(holdout_df),
@@ -331,13 +410,22 @@ def main() -> None:
         for name, value in ablations.items():
             print(f"  {name}: {value:.4f}")
 
+        print("--- served ranker vs historical frequency (top-3, 95% bootstrap CI) ---")
+        comparison = compare_with_history(served_holdout_df)
+        for name in ("served", "historicalFrequency", "servedMinusHistorical"):
+            low, high = comparison[name]["ci95"]
+            print(f"  {name}: {comparison[name]['value']:.4f} [{low:.4f}, {high:.4f}]")
+        novel = comparison["novelHotspots"]
+        novel_top3 = "—" if novel["servedTop3"] is None else f"{novel['servedTop3']:.4f}"
+        print(f"  novel hotspots (true cell outside history's top 3): {novel['complaints']} complaints, served top-3 {novel_top3}")
+
         print("--- explanation checks (sample of holdout top-ranked cells) ---")
         explanation = explanation_checks(risk_model, holdout_df)
         for name, value in explanation.items():
             print(f"  {name}: {value:.4f}")
 
         print("--- gates ---")
-        failures = check_gates(metrics)
+        failures = check_gates(metrics) + check_leakage(ablations, baselines)
 
         if failures:
             print(f"\nevaluate.py FAILED: {len(failures)} gate(s) not met: {', '.join(failures)}")
@@ -373,6 +461,7 @@ def main() -> None:
         "metrics": metrics,
         "baselines": baselines,
         "ablations": ablations,
+        "comparisonWithHistory": comparison,
         "explanationChecks": explanation,
     }
     (model_dir / "model_card.json").write_text(json.dumps(model_card, indent=2))

@@ -1,7 +1,7 @@
 {
   "modelVersion": "CyberPulse-Demo-v1",
   "featureSchemaVersion": "fs-1",
-  "trainedAt": "2026-10-08T09:25:39.267805+00:00",
+  "trainedAt": "2026-10-09T16:50:22.526893+00:00",
   "datasetSeed": 26184,
   "intendedUse": "Decision support for cyber-fraud investigators: ranking candidate cash-withdrawal locations and time windows for a filed complaint.",
   "outOfScope": [
@@ -45,11 +45,42 @@
     "logistic_regression": 0.8691588785046729
   },
   "ablations": {
-    "remove_spatial": 0.8598130841121495,
-    "remove_temporal": 0.8504672897196262,
-    "remove_network": 0.8691588785046729,
-    "remove_historical_hotspot": 0.5514018691588785,
-    "shuffled_labels": 0.12149532710280374
+    "none_removed": 0.8490765465064531,
+    "remove_spatial": 0.8620257209042255,
+    "remove_temporal": 0.8514977234603403,
+    "remove_network": 0.859293873312565,
+    "remove_historical_hotspot": 0.5685692033822874,
+    "shuffled_labels": 0.062127782716566236
+  },
+  "comparisonWithHistory": {
+    "metric": "top3_hit_rate, tie-averaged",
+    "bootstrapResamples": 2000,
+    "complaints": 107,
+    "served": {
+      "value": 0.8598130841121495,
+      "ci95": [
+        0.7850467289719626,
+        0.9252336448598131
+      ]
+    },
+    "historicalFrequency": {
+      "value": 0.8785046728971962,
+      "ci95": [
+        0.8107476635514018,
+        0.9369158878504673
+      ]
+    },
+    "servedMinusHistorical": {
+      "value": -0.018691588785046728,
+      "ci95": [
+        -0.05379672897196261,
+        0.014018691588785047
+      ]
+    },
+    "novelHotspots": {
+      "complaints": 7,
+      "servedTop3": 0.14285714285714285
+    }
   },
   "explanationChecks": {
     "min_five_factors_rate": 1.0,

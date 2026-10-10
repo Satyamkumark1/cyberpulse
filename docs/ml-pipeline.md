@@ -83,7 +83,7 @@ ROC-AUC ≥ 0.850 · PR-AUC ≥ 0.450 · precision ≥ 0.750 · recall ≥ 0.700
 
 ## The two checks that keep the evaluation honest
 
-**Shuffled labels must collapse to chance.** Retrain with labels shuffled within each complaint group. Top-3 hit rate must land within 0.05 of random. Anything above that means feature leakage, and every other metric is void.
+**Shuffled labels must collapse to chance.** Retrain with labels shuffled within each complaint group. Top-3 hit rate must land within 0.05 of random. Anything above that means feature leakage, and every other metric is void. `evaluate.py` fails the run when it does not. Ties are averaged rather than broken on `h3_index`, so a model that separates nothing scores exactly random (`ai/evaluation-framework.md` §3).
 
 **The margin over logistic regression is reported.** If the gradient-boosted model barely beats a linear baseline, the planted patterns are trivially linear and the evaluation is measuring the generator rather than the model. That is a finding to publish, not to hide.
 

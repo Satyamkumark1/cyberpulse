@@ -10,6 +10,27 @@ Change-management rules — what must accompany each kind of change — are defi
 
 ## [Unreleased]
 
+### Model — evaluation scores ties fairly; TC-ML-071 now blocks release
+
+The model is unchanged (same `risk_model.joblib` and `temporal_model.joblib` hashes) and so is every gated metric; only `model_card.json` and `bundle_manifest.json` were re-promoted (bundle `CyberPulse-Demo-v1-ac16dc3311c7`).
+
+The shuffled-label ablation read 0.1215 against random 0.0633 — above TC-ML-071's 0.05 tolerance — and it was not leakage. Isotonic calibration of a no-signal model ties 98% of a complaint's cells, and `rank_metrics`' `h3_index` tie-break then fills the top 3 in a fixed order; ranking by `h3_index` alone scores exactly 0.1215. Baselines and ablations now use `tie_averaged_top3` (expected top-3 over random orderings of tied scores), so a scorer that separates nothing lands on the random baseline. The served composite has no ties at the rank-3 cut, so the gated served metrics are identical under either method. The label shuffle also now draws one generator across complaints instead of reseeding per group, which had applied the same permutation to every equal-sized complaint.
+
+| Top-3 hit rate | Before | After |
+|---|---|---|
+| Shuffled labels | 0.1215 (fails TC-ML-071) | 0.0621 (passes) |
+| Classifier, no feature removed | 0.8598 (deterministic tie-break) | 0.8491 |
+| Remove spatial | 0.8598 | 0.8620 |
+| Remove temporal | 0.8505 | 0.8515 |
+| Remove network | 0.8692 | 0.8593 |
+| Remove historical hotspot | 0.5514 | 0.5686 |
+| Historical frequency baseline | 0.8785 | 0.8785 |
+| Logistic regression baseline | 0.8692 | 0.8692 |
+
+New in `model_card.json`: `comparisonWithHistory` — paired bootstrap (2,000 resamples of the 107 holdout complaints). Served ranker 0.8598 [0.7850, 0.9252]; historical frequency 0.8785 [0.8107, 0.9369]; difference −0.0187 [−0.0538, 0.0140]. On the 7 complaints whose true cell is outside history's top 3, the served ranker finds 1 (0.1429). The served ranker does not beat ranking by past withdrawals: the generator chooses the cash-out ATM from the victim's region and hot-ATM weighting, not from the mule chain, so spatial and network features carry no location signal (removing either raises the score slightly).
+
+`evaluate.py` now fails, writing nothing, when the shuffled-label ablation exceeds random by more than 0.05.
+
 ### Model — retrained on point-in-time historical features
 
 The committed artefacts were trained before `generate_training_data.py` stopped reading withdrawals that happened after a complaint was filed. Scored on the leak-free dataset they failed two release gates, so they were retrained (`signal_check.py` passed first). Seed 26184, same hyperparameters, same feature schema `fs-1`.
