@@ -12,7 +12,7 @@ import { PredictionFactors, PredictionSummary } from "@/components/prediction/Pr
 import { HotspotMapLazy } from "@/components/prediction/HotspotMapLoader";
 import { usePrediction } from "@/components/prediction/usePrediction";
 import { ANALYSIS_STEP, nextAutoStep } from "@/components/demo/autoAdvance";
-import { formatPaise, formatScorePercent, formatTimestampIst, formatWindowIst } from "@/lib/formatters";
+import { formatPaise, formatRiskScore, formatTimestampIst, formatWindowIst } from "@/lib/formatters";
 import { apiFetch } from "@/lib/apiFetch";
 
 const DEMO_HEADERS = { "x-cyberpulse-origin": "DEMO" } as const;
@@ -652,7 +652,7 @@ function AnalysisListStep({ rows, runId }: { rows: DemoRow[]; runId?: string }) 
                       <div className="flex items-center gap-2">
                         <RiskBadge level={p.riskLevel} />
                         <span className="font-mono text-xs font-semibold text-slate-700">
-                          {formatScorePercent(p.riskScore)}
+                          {formatRiskScore(p.riskScore)}
                         </span>
                       </div>
                     ) : (
@@ -810,7 +810,7 @@ function HotspotListStep({ rows }: { rows: DemoRow[] }) {
                       {row.prediction.data ? (
                         <div className="flex items-center gap-2">
                           <RiskBadge level={row.prediction.data.riskLevel} />
-                          <span className="font-mono text-xs text-slate-700">{formatScorePercent(row.prediction.data.riskScore)}</span>
+                          <span className="font-mono text-xs text-slate-700">{formatRiskScore(row.prediction.data.riskScore)}</span>
                         </div>
                       ) : row.prediction.isError ? (
                         <span className="text-xs text-red-700">Unavailable</span>
@@ -875,7 +875,7 @@ function ExplanationListStep({ rows }: { rows: DemoRow[] }) {
               {row.prediction.data ? (
                 <span className="flex items-center gap-2">
                   <RiskBadge level={row.prediction.data.riskLevel} />
-                  <span className="font-mono text-xs text-slate-700">{formatScorePercent(row.prediction.data.riskScore)}</span>
+                  <span className="font-mono text-xs text-slate-700">{formatRiskScore(row.prediction.data.riskScore)}</span>
                 </span>
               ) : (
                 <span className="text-xs text-slate-500">Not analysed</span>

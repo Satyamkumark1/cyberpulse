@@ -52,6 +52,18 @@ export type AlertSeverity = (typeof ALERT_SEVERITIES)[number];
 export const RECIPIENT_KINDS = ["LEA", "BANK", "I4C", "ATM_SITE"] as const;
 export type RecipientKind = (typeof RECIPIENT_KINDS)[number];
 
+// DEC-020: what a notification is about, where it goes, and what happened to
+// it. WEBHOOK messages are always SIMULATED in the prototype — built exactly
+// as they would be sent and recorded in the outbox, never sent.
+export const NOTIFICATION_KINDS = ["ALERT_DISPATCHED", "HIGH_RISK_NOTICE"] as const;
+export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
+
+export const NOTIFICATION_CHANNELS = ["DASHBOARD", "WEBHOOK"] as const;
+export type NotificationChannel = (typeof NOTIFICATION_CHANNELS)[number];
+
+export const NOTIFICATION_STATUSES = ["DELIVERED", "SIMULATED"] as const;
+export type NotificationStatus = (typeof NOTIFICATION_STATUSES)[number];
+
 /**
  * How each destination reads to an officer. Held here, not in a component, so
  * the alert modal and the alert detail page cannot drift apart.

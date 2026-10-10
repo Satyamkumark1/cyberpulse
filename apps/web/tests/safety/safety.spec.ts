@@ -1,5 +1,4 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
-import { becomeAdmin } from "../support/admin";
 
 // FEAT-17 Scam Shield — TC-SAFE-030 … TC-SAFE-039. Runs at phone size: a
 // citizen is most likely to be on a phone when the call comes in.
@@ -28,8 +27,7 @@ async function lookUp(page: Page, complaintId: string, trackingCode: string) {
 }
 
 test.afterAll(async ({ request }: { request: APIRequestContext }) => {
-  await becomeAdmin(request);
-  await request.post("/api/demo/reset");
+  await request.post("/api/demo/reset", { headers: { "x-cyberpulse-role": "ADMIN" } });
 });
 
 test("TC-SAFE-035: badge, disclaimer and report notice are on every /safety route, in both languages", async ({ page }) => {
@@ -110,6 +108,7 @@ test("TC-SAFE-034: the status page shows no score, amount, window or location", 
   await expect(page.getByTestId("citizen-stage-timeline")).toBeVisible();
   const text = (await page.locator("main").innerText()).toLowerCase();
   expect(text).not.toMatch(/\d+(\.\d+)?%/);
+  expect(text).not.toMatch(/\d+(\.\d+)?\s*\/\s*100/);
   expect(text).not.toMatch(/₹[\d,]+/);
   expect(text).not.toMatch(/\d{2}:\d{2}\s*[–-]\s*\d{2}:\d{2}/);
   expect(text).not.toContain("hotspot");

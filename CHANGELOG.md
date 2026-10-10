@@ -10,6 +10,32 @@ Change-management rules — what must accompany each kind of change — are defi
 
 ## [Unreleased]
 
+### Added — notifications: live dashboard bell, simulated partner webhooks, automatic HIGH-risk notices (DEC-020)
+
+- **Dashboard:** a Notifications bell in the header for LEA, BANK, I4C and ADMIN. It checks every 10 seconds, shows how many are new, pops a toast and announces it to screen readers.
+- **Webhooks:** every message to law enforcement, banks and I4C is built exactly as it would be POSTed to their system and listed on the new **Outbox** page, marked "Simulated, not sent". Nothing leaves the prototype.
+- **Triggers:** queueing an alert notifies each chosen recipient group. A HIGH-risk forecast automatically notifies LEA and I4C with a notice that is **not** an alert; an officer still decides whether to queue one.
+- New `notifications` table (migration `0008_add_notifications`, additive) and `GET /api/notifications` (API-110). No phone, email or name is stored. SMS and email were not added (they would need personal contact data).
+
+### Changed — one tab per role; ADMIN access code removed (ADR-024)
+
+- Each role in the header switcher opens its home page in a **new tab** (`?as=ROLE`), and each tab keeps its own role: an LEA tab and a BANK tab can be open side by side. `middleware.ts` carries the role into the page, its links and its API calls.
+- The ADMIN access code, its signed cookie and `ADMIN_ACCESS_CODE` are removed (ADR-023 superseded). **`ADMIN_ACCESS_CODE` is no longer needed in Vercel.** Anyone with the link can become ADMIN again — the declared ADR-019 gap.
+
+### Changed — risk score shown out of 100; limitations declared
+
+- **Risk score** renders `85.0 / 100` with a "Risk score" label and "Ranks candidate areas. Not a probability that cash will be withdrawn." It was `85.0%`, which reads as a probability (DEC-017). The factors panel is headed "Model factors" and says the rest of the score comes from documented rules. Degraded-mode tests also assert that no `NN / 100` appears.
+- **`max_depth=6` kept** as the documented grid-search winner; the rules said 5 (DEC-018).
+- **Model card limitations** now declare three known issues in the deployed model, re-promoted with identical metrics and model files (bundle `CyberPulse-Demo-v1-51b38746202d`): training counts accounts the money reaches after filing while serving does not, so temporal metrics are optimistic; training and serving order historical candidates differently; and only three inputs differ between candidate cells, so the money trail cannot change which cell ranks first.
+- An experiment that addresses the last point is on branch `experiment/mule-locality-fs2` (DEC-019 there). It beat past withdrawals on ranking but failed five release gates, so it was not promoted.
+
+### Changed — faster role switching; ADMIN demo code shown for judging (ADR-023 amendment)
+
+- One-click persona buttons (LEA, BANK, ADMIN, GUARD, I4C, CITIZEN) replace the role dropdown.
+- Choosing ADMIN shows the demo code with a **Use demo code** button, so judges can use ADMIN on their own devices. **While the code is shown, anyone who can open the app can become ADMIN** (reset demo data, change thresholds). ADMIN still cannot be claimed by header or hand-written cookie.
+- "Keep ADMIN on this device for 7 days" issues a 7-day ADMIN cookie instead of 8 hours; `POST /api/role` accepts `keep: true`.
+- The ADMIN form can be saved by a browser's password manager.
+
 ### Security — ADMIN needs a demo access code (ADR-023)
 
 Anyone could become ADMIN — from the header switcher, by writing the `cyberpulse_role` cookie, or with an `x-cyberpulse-role: ADMIN` header — and so reset demo data or change risk thresholds on a hosted demo. ADMIN now needs the `ADMIN_ACCESS_CODE` value: the header switcher asks for it, `POST /api/role` returns 403 without it, and the resulting cookie is signed (HMAC-SHA256), expires after 8 hours and is `httpOnly`. A hand-written, edited or expired ADMIN cookie, and the header claiming ADMIN, resolve to LEA. Every other role still switches freely. No migration.

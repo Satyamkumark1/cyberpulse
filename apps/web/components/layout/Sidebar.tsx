@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import type { ActorRole } from "@cyberpulse/shared/enums";
 
 const defaultGroups = [
-  { label: "Monitoring", items: [["/dashboard", "Dashboard", "M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z"], ["/risk-map", "Risk Map", "m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3V6 M9 3v15 M15 6v15"], ["/alerts", "Alerts", "M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9 M10 21h4"]] },
+  { label: "Monitoring", items: [["/dashboard", "Dashboard", "M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z"], ["/risk-map", "Risk Map", "m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3V6 M9 3v15 M15 6v15"], ["/alerts", "Alerts", "M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9 M10 21h4"], ["/outbox", "Outbox", "M4 4h16v16H4z M4 13h5l2 3h2l2-3h5"]] },
   { label: "Casework", items: [["/complaints", "Complaints", "M6 3h9l4 4v14H6z M14 3v5h5 M9 12h7 M9 16h7"], ["/transactions", "Transactions", "M3 7h17m-4-4 4 4-4 4 M21 17H4m4-4-4 4 4 4"], ["/investigations", "Investigations", "M10 17a7 7 0 1 0 0-14 7 7 0 0 0 0 14 M15 15l6 6"]] },
   { label: "Workspace", items: [["/reports", "Reports", "M4 3v18h17 M8 16v-4 M13 16V8 M18 16V5"], ["/settings", "Settings", "M4 7h16 M4 17h16 M8 4v6 M16 14v6"]] },
 ];

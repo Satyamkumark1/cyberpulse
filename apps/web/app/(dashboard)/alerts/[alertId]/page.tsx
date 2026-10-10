@@ -3,7 +3,7 @@ import Link from "next/link";
 import { FactorBar } from "@/components/common/FactorBar";
 import { notFound } from "next/navigation";
 import { randomUUID } from "node:crypto";
-import { formatTimestampIst, formatWindowIst, formatPaise, formatScorePercent } from "@/lib/formatters";
+import { formatTimestampIst, formatWindowIst, formatPaise, formatRiskScore } from "@/lib/formatters";
 import { resolveRoleFromNextHeaders } from "@/services/lib/auth";
 import { get } from "@/services/alertService";
 import { AcknowledgeAlertButton } from "@/components/alerts/AcknowledgeAlertButton";
@@ -116,7 +116,7 @@ export default async function AlertDetailPage({
               </h2>
               <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                 <dt className="text-slate-500">Risk score</dt>
-                <dd className="font-medium text-slate-800">{formatScorePercent(Number(alert.prediction.riskScore))}</dd>
+                <dd className="font-medium text-slate-800">{formatRiskScore(Number(alert.prediction.riskScore))}</dd>
                 <dt className="text-slate-500">Level</dt>
                 <dd className="text-slate-800">{alert.prediction.riskLevel}</dd>
                 <dt className="text-slate-500">Confidence</dt>

@@ -57,7 +57,7 @@ These are specified exactly and must not be paraphrased, because acceptance crit
 
 ### 2.4 Numbers in copy
 
-Never round in a way that overstates. `91.7%`, not "over 90%". Never write "highly likely" or "almost certain" — the confidence label is the vocabulary for uncertainty and it has exactly three values.
+Never round in a way that overstates. `91.7 / 100`, not "over 90". Never write "highly likely" or "almost certain" — the confidence label is the vocabulary for uncertainty and it has exactly three values.
 
 ---
 
@@ -101,7 +101,7 @@ Every data-bearing surface implements four states through the shared `StatePanel
 
 - Money: integer paise in storage, `₹3,80,000` on screen, Indian digit grouping, no decimals.
 - Timestamps: UTC in storage, IST on screen, always with the day for anything older than 24 hours.
-- Scores: one decimal as a percentage in the UI (`91.7%`); three decimals in the metrics panel (`0.917`).
+- Risk scores: one decimal out of 100 in the UI (`91.7 / 100`), never a percentage, because the score ranks areas and is not a probability (DEC-017); three decimals in the metrics panel (`0.917`).
 - IDs: rendered in full, in monospace, and copyable. Never truncate an identifier that a user may need to quote.
 - Percentages in the factor list always sum to 100. If the underlying contributions do not, the residual is grouped as "Other factors" rather than left unaccounted.
 - Empty numeric values render `—`, never `0`, when the cause is absence rather than a measured zero.

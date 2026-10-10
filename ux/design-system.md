@@ -113,7 +113,7 @@ Marker rank numerals mean the map remains readable in greyscale and to users wit
 
 ```tsx
 <RiskBadge level="HIGH" score={0.917} showScore />
-// renders: ▲ HIGH · 91.7%
+// renders: ▲ HIGH · 91.7 / 100
 ```
 
 | Prop | Type | Notes |

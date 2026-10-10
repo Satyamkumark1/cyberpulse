@@ -1,68 +1,22 @@
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { ACTOR_ROLES, type ActorRole } from "@cyberpulse/shared/enums";
-import { env } from "@/lib/env";
 import { ForbiddenError } from "@/lib/errors";
 
-// security/auth-strategy.md §2.2. Not authentication — no person is
-// identified (ADR-019). Every role except ADMIN is asserted, never verified.
-// ADMIN (settings, simulation, demo reset) must be earned with the shared
-// demo access code, and is carried in a signed, expiring cookie (ADR-023).
-// An unrecognised or unverified value falls back to LEA — not the most
-// restrictive role (GUARD is, per ADR-021), but the safe default this
-// prototype's cookie-less experience is built around: existing demo/map E2E
-// specs navigate with no role cookie set and expect full LEA-level
+// security/auth-strategy.md §2.2. Not authentication (ADR-019) — a role is
+// asserted, never verified. An unrecognised value falls back to LEA — not
+// the most restrictive role (GUARD is, per ADR-021), but the safe default
+// this prototype's cookie-less experience is built around: existing demo/map
+// E2E specs navigate with no role cookie set and expect full LEA-level
 // capability, and TC-SEC-010's actual intent is "never escalate to ADMIN on
 // bad input," which LEA satisfies regardless of what else exists.
 const ActorRoleSchema = z.enum(ACTOR_ROLES);
 export const ROLE_COOKIE = "cyberpulse_role";
 const ROLE_HEADER = "x-cyberpulse-role";
-export const ADMIN_SESSION_TTL_MS = 8 * 60 * 60 * 1000;
-const SIGNED_ADMIN = /^ADMIN\.(\d{1,16})\.([A-Za-z0-9_-]{43})$/;
 
-export function resolveRole(req: Request, nowMs: number = Date.now()): ActorRole {
+export function resolveRole(req: Request): ActorRole {
   const header = req.headers.get(ROLE_HEADER);
-  return header !== null ? claimedRole(header) : cookieRole(getCookie(req, ROLE_COOKIE), nowMs);
-}
-
-/** The cookie value a role switch sets. Throws ForbiddenError for ADMIN
- * without the right access code; every other role needs none. */
-export function issueRoleCookie(
-  role: ActorRole,
-  accessCode: string | undefined,
-  nowMs: number,
-): { value: string; maxAgeSeconds?: number } {
-  if (role !== "ADMIN") return { value: role };
-  if (accessCode === undefined || !sameText(accessCode, env.ADMIN_ACCESS_CODE)) throw new ForbiddenError();
-  const payload = `ADMIN.${nowMs + ADMIN_SESSION_TTL_MS}`;
-  return { value: `${payload}.${sign(payload)}`, maxAgeSeconds: ADMIN_SESSION_TTL_MS / 1000 };
-}
-
-// The key derives from the access code, so changing the code also ends every
-// ADMIN session issued under the old one.
-function sign(payload: string): string {
-  const key = createHash("sha256").update(`cyberpulse-admin-role:${env.ADMIN_ACCESS_CODE}`).digest();
-  return createHmac("sha256", key).update(payload).digest("base64url");
-}
-
-// Hashing first gives timingSafeEqual equal-length inputs, so the comparison
-// leaks neither content nor length.
-function sameText(a: string, b: string): boolean {
-  return timingSafeEqual(createHash("sha256").update(a).digest(), createHash("sha256").update(b).digest());
-}
-
-function cookieRole(raw: string | undefined, nowMs: number): ActorRole {
-  const signed = raw?.match(SIGNED_ADMIN);
-  if (!signed) return claimedRole(raw);
-  const [, expiresAt = "", signature = ""] = signed;
-  const valid = sameText(signature, sign(`ADMIN.${expiresAt}`)) && nowMs < Number(expiresAt);
-  return valid ? "ADMIN" : "LEA";
-}
-
-// An unverified claim may name any role but ADMIN.
-function claimedRole(raw: string | null | undefined): ActorRole {
-  const parsed = ActorRoleSchema.safeParse(raw ?? "LEA");
-  return parsed.success && parsed.data !== "ADMIN" ? parsed.data : "LEA";
+  const cookie = getCookie(req, ROLE_COOKIE);
+  return parseRole(header ?? cookie);
 }
 
 // FEAT-14 / FR-19.2: the only signal that tags a write as demo-generated
@@ -79,11 +33,15 @@ export function resolveOrigin(req: Request): "USER" | "DEMO" {
 /** Same resolution, for Server Components/pages that have no raw Request
  * (Next's `cookies()`/`headers()` instead) — e.g. the complaints pages
  * calling services directly rather than through a route handler. */
-export async function resolveRoleFromNextHeaders(nowMs: number = Date.now()): Promise<ActorRole> {
+export async function resolveRoleFromNextHeaders(): Promise<ActorRole> {
   const { cookies, headers } = await import("next/headers");
   const [cookieStore, headerStore] = await Promise.all([cookies(), headers()]);
-  const header = headerStore.get(ROLE_HEADER);
-  return header !== null ? claimedRole(header) : cookieRole(cookieStore.get(ROLE_COOKIE)?.value, nowMs);
+  return parseRole(headerStore.get(ROLE_HEADER) ?? cookieStore.get(ROLE_COOKIE)?.value);
+}
+
+function parseRole(raw: string | null | undefined): ActorRole {
+  const parsed = ActorRoleSchema.safeParse(raw ?? "LEA");
+  return parsed.success ? parsed.data : "LEA";
 }
 
 function getCookie(req: Request, name: string): string | undefined {

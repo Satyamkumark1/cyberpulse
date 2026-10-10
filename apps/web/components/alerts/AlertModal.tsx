@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { RECIPIENT_KINDS, RECIPIENT_LABELS, type RecipientKind, type RiskLevel } from "@cyberpulse/shared/enums";
 import { RiskBadge } from "@/components/common/RiskBadge";
 import { useFocusTrap } from "@/components/common/useFocusTrap";
-import { formatPaise, formatScorePercent, formatWindowIst } from "@/lib/formatters";
+import { formatPaise, formatRiskScore, formatWindowIst } from "@/lib/formatters";
 import { apiFetch, jsonInit } from "@/lib/apiFetch";
 
 interface GuardPostCoverageRow {
@@ -191,7 +191,7 @@ export function AlertModal({ prediction, onClose, onSuccess, headers }: AlertMod
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Risk Assessment</span>
               <div className="flex items-center gap-2">
                 <RiskBadge level={prediction.riskLevel} />
-                <span className="font-semibold text-slate-800">{formatScorePercent(prediction.riskScore)}</span>
+                <span className="font-semibold text-slate-800">{formatRiskScore(prediction.riskScore)}</span>
               </div>
             </div>
 
@@ -219,7 +219,7 @@ export function AlertModal({ prediction, onClose, onSuccess, headers }: AlertMod
 
             {prediction.factors.length > 0 ? (
               <div>
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Top Factors</span>
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Top model factors</span>
                 <ul className="mt-1 space-y-1 text-xs">
                   {prediction.factors.slice(0, 5).map((f) => (
                     <li key={f.name} className="flex justify-between text-slate-700">

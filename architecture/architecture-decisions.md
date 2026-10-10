@@ -346,7 +346,7 @@
 
 ## ADR-023 — ADMIN needs a demo access code
 
-**Status:** Accepted · **Date:** 2026-10-10 · **Amends:** ADR-019 for the ADMIN role only
+**Status:** Superseded by ADR-024 · **Date:** 2026-10-10 · **Amends:** ADR-019 for the ADMIN role only
 
 **Context.** Under ADR-019 any caller could claim any role, by the header switcher, by writing the `cyberpulse_role` cookie, or by sending `x-cyberpulse-role`. For most roles that only demonstrates the authorisation boundary. ADMIN is different: it holds `settings:write`, `simulation:control` and `demo:reset`, so anyone who could reach a hosted demo could reset its data or change its risk thresholds during an evaluation.
 
@@ -359,6 +359,26 @@
 **Consequences.** `ADMIN_ACCESS_CODE` is required at boot in every environment (`.env.example`, CI, `devops/environments.md` §6). E2E specs earn ADMIN through `tests/support/admin.ts`. Updated in the same change: `.claude/rules/security.md`, `security/auth-strategy.md`, `security/threat-model.md`, `architecture/security-architecture.md` §4.1, `architecture/api-design.md` API-091, `test-cases/api-tests.md` TC-API-091, `docs/demo-script.md`.
 
 **Reversible.** Yes: no migration. Reverting the code change restores ADR-019 behaviour.
+
+**Amendment (2026-10-10): the code is shown for judging.** Judges asked to use ADMIN on their own devices, so the role switcher shows the demo code with a **Use demo code** button. **While it is shown, anyone who can open the app can become ADMIN**, and the HMAC key, which derives from the code, can be computed by anyone, so ADMIN expiry is not a security property either. What remains: ADMIN is never granted by the role header or a hand-written cookie, and every ADMIN switch goes through `POST /api/role` and its rate limit. To make ADMIN private again, stop passing `demoCode` to `RoleSwitcher` (three call sites) and rotate `ADMIN_ACCESS_CODE`. Also added: one-click persona buttons replace the dropdown; the ADMIN form can be saved by a browser's password manager; and `keep: true` issues a 7-day ADMIN cookie instead of 8 hours.
+
+---
+
+## ADR-024 — Per-tab roles; no access code
+
+**Status:** Accepted · **Date:** 2026-10-10 · **Supersedes:** ADR-023
+
+**Context.** The ADMIN access code (ADR-023) was already shown in the switcher for judging, so it protected nothing, and it made every deployment require `ADMIN_ACCESS_CODE`. Presenters also want two roles open at once (an LEA tab beside a BANK tab), which a role cookie cannot give: every tab shares it.
+
+**Decision.** Remove the access code, the signed ADMIN cookie and `ADMIN_ACCESS_CODE`; every role is asserted again exactly as ADR-019 describes. The header switcher opens each role's home page in a new tab with `?as=ROLE` (LEA, BANK, I4C, ADMIN → `/dashboard`; GUARD → `/guard`; CITIZEN → `/safety`). `middleware.ts` sets the `x-cyberpulse-role` request header from `?as=`, re-adds `?as=` when a page is reached from a role tab, and gives an API call its calling page's role via the same-site `Referer`. An explicit header always wins; a tab with no `?as=` falls back to the cookie.
+
+**Alternatives.** (a) Keep the code: no protection while it is displayed, and a required variable in every environment. (b) Role per tab in `sessionStorage`: server-rendered pages cannot read it. (c) A path prefix per role (`/bank/dashboard`): every route moves.
+
+**Trade-offs.** Anyone with the link can become ADMIN, by switcher, by `?as=ADMIN`, or by header — the declared ADR-019 gap, now covering ADMIN again. Role resolution depends on browsers sending same-site `Referer`, which they do by default; adding a `Referrer-Policy` of `no-referrer` or `same-origin`-stripping would break per-tab roles for API calls.
+
+**Consequences.** `ADMIN_ACCESS_CODE` is no longer required anywhere. Tests: `middleware.test.ts`; `tests/roles/sidebar.spec.ts` for new tabs, independent tab roles and link navigation.
+
+**Reversible.** Yes: no migration.
 
 ---
 
@@ -389,4 +409,5 @@
 | 021 | GUARD and I4C roles | Accepted | — |
 | 022 | CITIZEN role and public report intake | Accepted | — |
 | 021 | Extending the role concept: GUARD and I4C | Accepted | — |
-| 023 | ADMIN needs a demo access code | Accepted | ADR-019, ADMIN role only |
+| 023 | ADMIN needs a demo access code | Superseded by ADR-024 | ADR-019, ADMIN role only |
+| 024 | Per-tab roles; no access code | Accepted | ADR-023 |

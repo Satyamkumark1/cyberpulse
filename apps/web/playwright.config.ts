@@ -1,11 +1,4 @@
-import { existsSync } from "node:fs";
-import { join } from "node:path";
 import { defineConfig, devices } from "@playwright/test";
-
-// ADR-023: tests earn ADMIN with the running app's ADMIN_ACCESS_CODE. Local
-// runs read it from the app's own env file; an exported value wins.
-const localEnv = join(process.cwd(), ".env.local");
-if (!process.env.ADMIN_ACCESS_CODE && existsSync(localEnv)) process.loadEnvFile(localEnv);
 
 // One config, one project per suite, all against a running local app
 // (`make dev`). Serial: the demo and safety suites write DEMO-origin rows and

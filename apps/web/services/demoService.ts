@@ -4,7 +4,7 @@ import { requireAdminOrDemo, type RequestContext } from "./lib/auth";
 import type { DbTransaction } from "./auditService";
 import * as auditService from "./auditService";
 
-const { alerts, complaints, investigations, predictions } = dbSchema;
+const { alerts, complaints, investigations, predictions, notifications } = dbSchema;
 
 export interface DemoResetCounts {
   alertsCleared: number;
@@ -82,6 +82,9 @@ export async function previewReset(ctx: RequestContext): Promise<DemoResetCounts
 export async function reset(ctx: RequestContext): Promise<DemoResetCounts> {
   requireAdminOrDemo(ctx);
   return db.transaction(async (tx) => {
+    // DEC-020: notices from demo runs on seed complaints have no demo alert or
+    // complaint to cascade from, so they are cleared by their own origin.
+    await tx.delete(notifications).where(eq(notifications.origin, "DEMO"));
     const deletedAlerts = await tx.delete(alerts).where(eligibleAlerts()).returning({ id: alerts.id });
     const deletedInvestigations = await tx.delete(investigations).where(eligibleInvestigations()).returning({ id: investigations.id });
     await tx.delete(predictions).where(inArray(predictions.complaintId, demoComplaintIds()));

@@ -77,7 +77,7 @@ A top score of 0.92 with a second of 0.91 is not confident. Conflating the two w
 
 - **Split by complaint, never by row.** Sixty candidate rows per complaint means a row split puts the same complaint on both sides.
 - Retain complaints whose true cell was never a candidate as all-negative groups. Dropping them inflates top-k hit rate by excluding the cases the engine cannot solve.
-- `max_depth=5`, not deeper — deep trees memorise a synthetic generator.
+- `max_depth` from the documented grid search (3–6; currently 6, DEC-018). Deeper needs a new search and a decision entry — deep trees memorise a synthetic generator, which the shuffled-label check and the single holdout touch exist to catch.
 - Optimise PR-AUC, not ROC-AUC, at 1:59 imbalance. Report both.
 - Calibrate with isotonic regression. An uncalibrated score shown as a percentage is a false statement.
 - The holdout is touched **once**, by `evaluate.py` only.

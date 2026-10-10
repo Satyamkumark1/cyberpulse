@@ -17,3 +17,4 @@ export * from "./settings";
 export * from "./auditEvents";
 export * from "./analyticsEvents";
 export * from "./citizenReports";
+export * from "./notifications";

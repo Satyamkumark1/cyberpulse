@@ -14,7 +14,7 @@
 |---|---|
 | T−60 | `/api/health` all green; smoke suite; model version verified |
 | T−30 | One full `/demo` run — warms the service and the caches |
-| T−25 | Switch to **ADMIN** with the access code (ADR-023), **Reset Demo**, then switch back to **LEA** |
+| T−25 | Click **ADMIN** (opens a new tab), **Reset Demo**, close that tab |
 | T−15 | Health tab open in a second window; mains power; screen sleep off; zoom 100%; window 1920×1080 |
 | T−5 | Printed runbook to hand |
 
@@ -168,7 +168,7 @@ Stop. Reset. Reload. Do not explain it away.
 
 ## Between evaluators
 
-1. **Reset Demo** as ADMIN (access code, ADR-023) — confirm the counts, then switch back to LEA
+1. **Reset Demo** in an ADMIN tab (click **ADMIN**) — confirm the counts, then close that tab
 2. Check the health tab
 3. Reload `/demo`
 4. Confirm `C-10284` is present

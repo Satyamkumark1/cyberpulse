@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 // ADR-021 — GUARD and I4C. Sidebar.tsx is role-aware for the first time; this
 // is genuinely new E2E territory (neither scenario.spec.ts nor map.spec.ts
@@ -79,42 +79,35 @@ test("/guard renders a real duty-post table for GUARD, composed from the live pr
   await expect(page.getByText(data[0]!.name, { exact: false }).first()).toBeVisible();
 });
 
-test("choosing CITIZEN in the role switcher opens the citizen pages", async ({ page, context, baseURL }) => {
-  await context.addCookies([{ name: "cyberpulse_role", value: "LEA", url: baseURL! }]);
-  await page.goto("/dashboard");
+// ADR-024: each role opens in its own tab, and each tab keeps its own role.
+const roleLink = (page: Page, role: string) =>
+  page.getByRole("navigation", { name: "Prototype role" }).getByRole("link", { name: new RegExp(`^${role}\\b`) });
 
-  await page.getByLabel("Prototype role").selectOption("CITIZEN");
+test("a role opens its home page in a new tab, and the first tab keeps its role", async ({ page, context }) => {
+  await page.goto("/dashboard?as=LEA");
 
-  await expect(page).toHaveURL(/\/safety$/);
+  const [bankTab] = await Promise.all([context.waitForEvent("page"), roleLink(page, "BANK").click()]);
+  await bankTab.waitForLoadState();
+
+  await expect(bankTab).toHaveURL(/\/dashboard\?as=BANK$/);
+  await expect(roleLink(bankTab, "BANK")).toHaveAttribute("aria-current", "true");
+  await page.reload();
+  await expect(roleLink(page, "LEA")).toHaveAttribute("aria-current", "true");
 });
 
-// ADR-023: ADMIN is the one role that needs the demo access code.
-test("choosing ADMIN asks for the access code and refuses a wrong one", async ({ page, context, baseURL }) => {
-  await context.addCookies([{ name: "cyberpulse_role", value: "LEA", url: baseURL! }]);
-  await page.goto("/dashboard");
+test("CITIZEN opens the citizen pages in a new tab", async ({ page, context }) => {
+  await page.goto("/dashboard?as=LEA");
 
-  await page.getByLabel("Prototype role").selectOption("ADMIN");
-  await page.getByLabel("ADMIN access code").fill("not-the-access-code");
-  await page.getByRole("button", { name: "Switch" }).click();
+  const [citizenTab] = await Promise.all([context.waitForEvent("page"), roleLink(page, "CITIZEN").click()]);
 
-  await expect(page.getByRole("status").filter({ hasText: "Access code not accepted." })).toBeVisible();
-  await expect(page.getByLabel("Prototype role")).toHaveValue("LEA");
+  await expect(citizenTab).toHaveURL(/\/safety\?as=CITIZEN$/);
 });
 
-test("the right access code switches to ADMIN", async ({ page, context, baseURL }) => {
-  await context.addCookies([{ name: "cyberpulse_role", value: "LEA", url: baseURL! }]);
-  await page.goto("/dashboard");
+test("a link inside a role tab keeps that tab's role", async ({ page }) => {
+  await page.goto("/dashboard?as=I4C");
 
-  await page.getByLabel("Prototype role").selectOption("ADMIN");
-  await page.getByLabel("ADMIN access code").fill(process.env.ADMIN_ACCESS_CODE ?? "");
-  await page.getByRole("button", { name: "Switch" }).click();
+  await page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "Alerts" }).click();
 
-  await expect(page.getByLabel("Prototype role")).toHaveValue("ADMIN");
-});
-
-test("a hand-written ADMIN cookie gets LEA, not ADMIN", async ({ page, context, baseURL }) => {
-  await context.addCookies([{ name: "cyberpulse_role", value: "ADMIN", url: baseURL! }]);
-  await page.goto("/dashboard");
-
-  await expect(page.getByLabel("Prototype role")).toHaveValue("LEA");
+  await expect(page).toHaveURL(/\/alerts\?as=I4C$/);
+  await expect(roleLink(page, "I4C")).toHaveAttribute("aria-current", "true");
 });
