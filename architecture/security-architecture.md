@@ -95,7 +95,7 @@ Three roles: **LEA**, **BANK**, **ADMIN**. Enforcement is a two-stage check in t
 
 `POST /api/role` sets the active role. **This is not authentication.** It is stated as a prototype affordance in the UI, in `security/auth-strategy.md`, in ADR-019, and here. Its purpose is to let an evaluator observe that authorisation boundaries exist and are enforced server-side — a request with `x-cyberpulse-role: BANK` genuinely receives 403 on `POST /api/investigations` (AC-015-02, TC-SEC-011).
 
-What it does **not** do is prevent a caller from choosing a different role. Any real deployment replaces it with an identity provider before any real data is present, and the classification gate described in `architecture/integrations.md` §3.1 is designed to make that non-optional.
+What it does **not** do is prevent a caller from choosing a different role, except ADMIN, which needs the demo access code and a signed, expiring cookie (ADR-023). Any real deployment replaces it with an identity provider before any real data is present, and the classification gate described in `architecture/integrations.md` §3.1 is designed to make that non-optional.
 
 ---
 

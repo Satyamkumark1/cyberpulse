@@ -280,7 +280,7 @@
 
 ## ADR-019 — Role concept without authentication
 
-**Status:** Accepted · **Date:** 2026-09-14
+**Status:** Accepted, amended for ADMIN by ADR-023 · **Date:** 2026-09-14
 
 **Context.** The source specification permits role switching in the prototype (§29). Real identity management is out of scope.
 
@@ -344,6 +344,24 @@
 
 ---
 
+## ADR-023 — ADMIN needs a demo access code
+
+**Status:** Accepted · **Date:** 2026-10-10 · **Amends:** ADR-019 for the ADMIN role only
+
+**Context.** Under ADR-019 any caller could claim any role, by the header switcher, by writing the `cyberpulse_role` cookie, or by sending `x-cyberpulse-role`. For most roles that only demonstrates the authorisation boundary. ADMIN is different: it holds `settings:write`, `simulation:control` and `demo:reset`, so anyone who could reach a hosted demo could reset its data or change its risk thresholds during an evaluation.
+
+**Decision.** ADMIN alone must be earned. `POST /api/role` with `role: "ADMIN"` requires `accessCode` equal to the `ADMIN_ACCESS_CODE` environment variable (compared in constant time) and otherwise returns 403. On success the cookie value is `ADMIN.<expiresAtMs>.<HMAC-SHA256>`, valid for 8 hours, keyed from the access code, and set `httpOnly`. `resolveRole` grants ADMIN only for a valid, unexpired signature; a plain `ADMIN` cookie, an edited one, an expired one, and the `x-cyberpulse-role` header claiming ADMIN all resolve to LEA (TC-SEC-010's "never escalate to ADMIN on bad input"). Every other role is still asserted, never verified, exactly as ADR-019, ADR-021 and ADR-022 describe, and the header may still claim any of them.
+
+**Alternatives.** (a) A real login with accounts (Auth.js, Neon Auth): an accounts table, a new dependency and every role behind a session, for a prototype with no real data and no personal data allowed in the schema. (b) An access code for every role: closes nothing that matters, because the non-ADMIN roles only demonstrate boundaries, and it slows the live demo. (c) A separate signing secret: a second variable to provision; deriving the key from the code also makes changing the code end every ADMIN session.
+
+**Trade-offs.** One code is shared by everyone who presents, so the audit trail still records a role, not a person. The cookie can be replayed for up to 8 hours by whoever holds it. Guessing is bounded by the 30/min mutation rate limit and the 12-character minimum. The cookie is `httpOnly` now because for ADMIN it is a bearer token; the earlier rule against `httpOnly` applied to a value that granted nothing.
+
+**Consequences.** `ADMIN_ACCESS_CODE` is required at boot in every environment (`.env.example`, CI, `devops/environments.md` §6). E2E specs earn ADMIN through `tests/support/admin.ts`. Updated in the same change: `.claude/rules/security.md`, `security/auth-strategy.md`, `security/threat-model.md`, `architecture/security-architecture.md` §4.1, `architecture/api-design.md` API-091, `test-cases/api-tests.md` TC-API-091, `docs/demo-script.md`.
+
+**Reversible.** Yes: no migration. Reverting the code change restores ADR-019 behaviour.
+
+---
+
 ## Decision Index
 
 | ADR | Title | Status | Supersedes |
@@ -366,8 +384,9 @@
 | 016 | Testing stack | Accepted | — |
 | 017 | Vercel + container host + Neon | Accepted | — |
 | 018 | Integer paise, UTC | Accepted | — |
-| 019 | Roles without authentication | Accepted | — |
+| 019 | Roles without authentication | Accepted, amended by ADR-023 | — |
 | 020 | Single typed error envelope | Accepted | — |
 | 021 | GUARD and I4C roles | Accepted | — |
 | 022 | CITIZEN role and public report intake | Accepted | — |
 | 021 | Extending the role concept: GUARD and I4C | Accepted | — |
+| 023 | ADMIN needs a demo access code | Accepted | ADR-019, ADMIN role only |

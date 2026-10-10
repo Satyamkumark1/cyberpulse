@@ -95,6 +95,10 @@ A model is only as good as what it beats. Four baselines, computed on the same h
 
 **The logistic baseline is the important one.** If XGBoost fails to beat it by a meaningful margin, the planted patterns are trivially linear and the evaluation is measuring the generator rather than the model. That finding would be worth reporting rather than hiding.
 
+**Ties are averaged, not broken.** Baselines and ablations score top-3 as the expected hit over random orderings of tied scores (`tie_averaged_top3`). Isotonic calibration ties many cells, and the serving `h3_index` tie-break orders them in a fixed, non-random way; a scorer with every score tied gets 0.1215 on the seed corpus under that tie-break, against 0.0633 for random. The served ranker's published metrics keep the serving tie-break, because that is what an officer sees.
+
+**Margin over history, with uncertainty.** `model_card.json` → `comparisonWithHistory` reports the served ranker and historical frequency with paired 95% bootstrap intervals over holdout complaints, their difference, and the served top-3 on the *novel-hotspot slice* — reachable complaints whose true cell history does not place in its top 3. That slice is where a model can add anything history cannot.
+
 ---
 
 ## 4. Ablations
@@ -109,7 +113,7 @@ Run on every training pass; results recorded in `model_card.json`.
 | Remove historical hotspot | Is the model just memorising known hotspots? |
 | Shuffle labels | Does performance collapse to baseline? (sanity check for leakage) |
 
-The shuffled-label ablation is a leakage detector. If a model trained on shuffled labels performs above chance, something in the feature pipeline is leaking the answer, and every other number is void.
+The shuffled-label ablation is a leakage detector. If a model trained on shuffled labels performs above chance, something in the feature pipeline is leaking the answer, and every other number is void. `evaluate.py` enforces it (TC-ML-071): more than 0.05 above random fails the run and writes nothing. All ablations, including the unablated `none_removed` reference, are tie-averaged (§3).
 
 ---
 

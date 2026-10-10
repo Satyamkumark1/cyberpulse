@@ -1,12 +1,12 @@
 {
-  "bundleId": "CyberPulse-Demo-v1-d68011ba5d7a",
+  "bundleId": "CyberPulse-Demo-v1-ac16dc3311c7",
   "modelVersion": "CyberPulse-Demo-v1",
   "featureSchemaVersion": "fs-1",
-  "promotedAt": "2026-10-08T09:25:54.410374+00:00",
+  "promotedAt": "2026-10-09T16:50:59.699748+00:00",
   "files": {
     "risk_model.joblib": "3bb6c36dfed2fa3d3903a5acbedc6a40283b9bc51ec937a8269eee6f5d49da7f",
     "temporal_model.joblib": "2b4d900920fc9f49a630f302638115eb6f3fe35852881302993ff2a06bd986c9",
     "feature_schema.json": "fa1eff4f1a1faf89e3ab18a6f7514956778c5157758167767c1dd4c11c5724a7",
-    "model_card.json": "d68011ba5d7aec6b9dfd5900cecd9094679fea589a0304f38238c69c4788f3d5"
+    "model_card.json": "ac16dc3311c7de91eb87ff7b28b4985115f1cd0c9580a4f9147808bca8809c38"
   }
 }

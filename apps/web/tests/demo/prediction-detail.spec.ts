@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { becomeAdmin } from "../support/admin";
 
 // Integrity test (RULE-testing.md): the alert and investigation detail pages
 // must render the prediction exactly as the API returned it. They once
@@ -9,7 +10,8 @@ const officer = { "content-type": "application/json", "x-cyberpulse-role": "LEA"
 type Factor = { name: string; contribution: number; direction: "INCREASES" | "REDUCES" };
 
 test("alert and investigation detail pages show the prediction's factors and confidence as returned", async ({ page, request }) => {
-  await request.post("/api/demo/reset", { headers: { "x-cyberpulse-role": "ADMIN" } });
+  await becomeAdmin(request);
+  await request.post("/api/demo/reset");
 
   const list = await request.get("/api/complaints?pageSize=20&sort=complaintTimestamp&order=desc", { headers: officer });
   const complaints = (await list.json()).data as { complaintId: string }[];

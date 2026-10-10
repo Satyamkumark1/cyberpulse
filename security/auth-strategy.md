@@ -33,23 +33,24 @@ What the prototype **does** do is enforce authorisation server-side once a role 
 POST /api/role  { "role": "BANK" }
 ```
 
-Sets a non-httpOnly, same-site cookie carrying the selected role. Subsequent requests resolve the role from that cookie, or from an `x-cyberpulse-role` header when present (which is how the test suite exercises role boundaries).
+Sets an `httpOnly`, same-site cookie carrying the selected role. Subsequent requests resolve the role from that cookie, or from an `x-cyberpulse-role` header when present (which is how the test suite exercises role boundaries).
+
+ADMIN is the exception (ADR-023): `{ "role": "ADMIN", "accessCode": "…" }` must carry the `ADMIN_ACCESS_CODE` value, or the switch returns 403. The cookie is then `ADMIN.<expiresAtMs>.<HMAC-SHA256>`, valid for 8 hours, with the key derived from the access code. The header can never claim ADMIN.
 
 The `/safety` pages (FEAT-17) always send `x-cyberpulse-role: CITIZEN`, so the citizen side never depends on the cookie. CITIZEN is asserted exactly like every other role (ADR-022); what protects a citizen's report status is the one-time tracking code, not the role.
 
 ### 2.2 Role resolution
 
 ```ts
-export function resolveRole(req: Request): ActorRole {
+export function resolveRole(req: Request, nowMs = Date.now()): ActorRole {
   const header = req.headers.get('x-cyberpulse-role');
-  const cookie = getCookie(req, 'cyberpulse_role');
-  const raw = header ?? cookie ?? 'LEA';
-  const parsed = ActorRoleSchema.safeParse(raw);
-  return parsed.success ? parsed.data : 'LEA';          // unknown role → least privilege
+  return header !== null
+    ? claimedRole(header)                                  // any role but ADMIN
+    : cookieRole(getCookie(req, 'cyberpulse_role'), nowMs); // ADMIN only if signed and unexpired
 }
 ```
 
-An unrecognised value falls back to LEA rather than erroring or granting ADMIN. LEA is not the most restrictive role — GUARD is (ADR-021) — but it is the safe default this prototype's cookie-less experience is built around: existing demo/map E2E specs never set a role cookie and expect full LEA-level capability. The correctness property this guards is narrower and still holds regardless of what else exists: never escalate to ADMIN on unrecognised input.
+An unrecognised or unverified value falls back to LEA rather than erroring or granting ADMIN. LEA is not the most restrictive role — GUARD is (ADR-021) — but it is the safe default this prototype's cookie-less experience is built around: existing demo/map E2E specs never set a role cookie and expect full LEA-level capability. The correctness property this guards is narrower and still holds regardless of what else exists: never escalate to ADMIN on unrecognised input.
 
 ### 2.3 UI labelling
 
@@ -112,12 +113,12 @@ Step 2 is the only step touching application logic, because authorisation is alr
 
 | Threat | Accepted because | Bounded by |
 |---|---|---|
-| Any caller can assume any role | No real data exists | Synthetic-only constraint (CR-01) |
+| Any caller can assume any role except ADMIN | No real data exists; the non-ADMIN roles only demonstrate boundaries | Synthetic-only constraint (CR-01); ADMIN needs the access code (ADR-023) |
 | No attribution beyond role | Prototype audit demonstrates the mechanism, not real accountability | Declared in `security/security-checklist.md` |
-| No session expiry | No credential to expire | — |
-| Role cookie is not httpOnly | It is not a credential; making it httpOnly would imply otherwise | Deliberate — a security-looking control over a non-security value is worse than none |
+| One ADMIN code shared by every presenter | No identities exist to tell presenters apart | 8-hour signed cookie; changing the code ends every ADMIN session |
+| Non-ADMIN role cookies never expire | They grant nothing a caller could not claim anyway | — |
 
-The last row is a small decision with a general principle behind it: dressing a demonstration affordance in security clothing makes reviewers trust it more than they should. The cookie is plainly not a credential, and the code and the UI both say so.
+The cookie is `httpOnly` because for ADMIN it is a bearer token (ADR-023). For every other role it still grants nothing a caller could not claim with a header, and the code and the UI both say so.
 
 ---
 
