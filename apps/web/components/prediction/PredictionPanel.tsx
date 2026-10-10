@@ -6,7 +6,7 @@ import { FactorBar } from "@/components/common/FactorBar";
 import { RiskBadge } from "@/components/common/RiskBadge";
 import { StatePanel } from "@/components/common/StatePanel";
 import { AlertModal } from "@/components/alerts/AlertModal";
-import { formatPaise, formatScorePercent, formatWindowIst } from "@/lib/formatters";
+import { formatPaise, formatRiskScore, formatWindowIst } from "@/lib/formatters";
 import { HotspotMapLazy } from "./HotspotMapLoader";
 import { usePrediction } from "./usePrediction";
 
@@ -105,12 +105,14 @@ export function PredictionSummary({
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-slate-200 bg-slate-50/70 p-4">
         <div className="flex flex-wrap items-center gap-3">
           <RiskBadge level={prediction.riskLevel} />
+          <span className="text-xs font-medium uppercase tracking-wider text-slate-500">Risk score</span>
           <span className="text-2xl font-bold tracking-tight text-slate-800">
-            {formatScorePercent(prediction.riskScore)}
+            {formatRiskScore(prediction.riskScore)}
           </span>
           <span className="rounded-full bg-slate-200/80 px-2 py-0.5 text-xs font-medium text-slate-700">
             confidence: {prediction.confidence}
           </span>
+          <p className="basis-full text-xs text-slate-500">Ranks candidate areas. Not a probability that cash will be withdrawn.</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-6 text-sm">
@@ -197,7 +199,7 @@ export function PredictionSummary({
                     </span>
                     <span className="text-right">
                       <span className="font-mono text-xs font-semibold text-slate-700">
-                        {formatScorePercent(h.score)}
+                        {formatRiskScore(h.score)}
                       </span>
                       <span className="block text-[10px] text-slate-400">
                         {h.likelyAtms} ATMs
@@ -243,12 +245,12 @@ export function PredictionSummary({
 export function PredictionFactors({ prediction }: { prediction: PredictionResponse }) {
   return (
     <div>
-      <h3 className="text-sm font-semibold text-slate-700">Factors</h3>
+      <h3 className="text-sm font-semibold text-slate-700">Model factors</h3>
       {!prediction.explanationAvailable ? (
         <p className="text-sm text-slate-600">Explanation could not be generated for this prediction.</p>
       ) : (
         <>
-          <p className="mt-1 text-xs text-slate-500">Relative SHAP contributions to the underlying classifier output; they do not decompose the blended ranking score.</p>
+          <p className="mt-1 text-xs text-slate-500">What drove the model&apos;s part of the risk score. The rest of the score comes from documented rules, such as past withdrawals in the area and ATM density.</p>
           <ul className="mt-1 divide-y divide-slate-100">
             {prediction.factors.map((f) => (
               <FactorBar key={f.name} name={f.name} contribution={f.contribution} direction={f.direction} />

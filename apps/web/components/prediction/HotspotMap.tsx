@@ -13,7 +13,7 @@ import {
 import { cellToBoundary, isValidCell } from "h3-js";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { PredictionResponse } from "@cyberpulse/shared/zod/prediction";
-import { formatScorePercent } from "@/lib/formatters";
+import { formatRiskScore } from "@/lib/formatters";
 import { RISK_COLORS } from "@/components/map/types";
 
 setWorkerUrl("/maplibre-gl-worker.mjs");
@@ -270,7 +270,7 @@ export function HotspotMap({
 
       el.style.setProperty("--pin-color", pinColor);
       el.setAttribute("aria-label", `Hotspot rank ${h.rank}: ${h.name}`);
-      el.setAttribute("title", `#${h.rank} ${h.name} (${formatScorePercent(h.score)})`);
+      el.setAttribute("title", `#${h.rank} ${h.name} (${formatRiskScore(h.score)})`);
 
       const label = document.createElement("span");
       label.textContent = String(h.rank);
@@ -399,7 +399,7 @@ export function HotspotMap({
                 </p>
               </div>
               <span className="rounded bg-blue-50 px-2 py-0.5 font-mono text-xs font-bold text-blue-700">
-                {formatScorePercent(activeHotspot.score)}
+                {formatRiskScore(activeHotspot.score)}
               </span>
             </div>
 

@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { COMPLAINT_STATUSES, FRAUD_TYPES, RISK_LEVELS } from "@cyberpulse/shared/enums";
 import { RiskBadge } from "@/components/common/RiskBadge";
 import { StatePanel } from "@/components/common/StatePanel";
-import { formatPaise, formatScorePercent, formatTimestampIst } from "@/lib/formatters";
+import { formatPaise, formatRiskScore, formatTimestampIst } from "@/lib/formatters";
 import { resolveRoleFromNextHeaders } from "@/services/lib/auth";
 import { list, listStates, type ComplaintListQuery } from "@/services/complaintService";
 
@@ -181,7 +181,7 @@ export default async function ComplaintsPage({
                     <div className="flex items-center gap-2">
                       <RiskBadge level={c.riskLevel} />
                       {c.riskScore !== null ? (
-                        <span className="text-xs text-slate-500">{formatScorePercent(c.riskScore)}</span>
+                        <span className="text-xs text-slate-500">{formatRiskScore(c.riskScore)}</span>
                       ) : null}
                     </div>
                   </td>

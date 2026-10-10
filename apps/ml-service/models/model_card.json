@@ -1,7 +1,7 @@
 {
   "modelVersion": "CyberPulse-Demo-v1",
   "featureSchemaVersion": "fs-1",
-  "trainedAt": "2026-10-09T16:50:22.526893+00:00",
+  "trainedAt": "2026-10-10T08:14:11.249130+00:00",
   "datasetSeed": 26184,
   "intendedUse": "Decision support for cyber-fraud investigators: ranking candidate cash-withdrawal locations and time windows for a filed complaint.",
   "outOfScope": [
@@ -17,7 +17,10 @@
     "Labels derive from withdrawals.complaint_id, which would not exist in production without outcome capture",
     "No bias or differential-impact evaluation is possible on synthetic data",
     "Candidate generation bounds achievable recall",
-    "24-hour horizon and H3 resolution 8 are fixed assumptions"
+    "24-hour horizon and H3 resolution 8 are fixed assumptions",
+    "Training counts every account in a complaint's chain, including accounts the money reaches only after the complaint was filed; serving counts only those seen by filing time, so the temporal metrics are optimistic",
+    "Training orders the state's historical candidate cells by h3_index while serving orders them by withdrawal count, so the 60-cell cap can keep different cells in each",
+    "Only distance, ATM density and past withdrawals differ between candidate cells, so the money trail cannot change which cell ranks first; it affects the risk level and the time window"
   ],
   "metrics": {
     "roc_auc": 0.978060551546662,

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { FactorBar } from "@/components/common/FactorBar";
 import { notFound } from "next/navigation";
 import { randomUUID } from "node:crypto";
-import { formatTimestampIst, formatPaise, formatScorePercent } from "@/lib/formatters";
+import { formatTimestampIst, formatPaise, formatRiskScore } from "@/lib/formatters";
 import { hasCapability, resolveRoleFromNextHeaders } from "@/services/lib/auth";
 import { get } from "@/services/investigationService";
 import { InvestigationActionPanel } from "@/components/investigations/InvestigationActionPanel";
@@ -99,7 +99,7 @@ export default async function InvestigationDetailPage({
               </h2>
               <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                 <dt className="text-slate-500">Risk score</dt>
-                <dd className="font-medium text-slate-800">{formatScorePercent(Number(latestPrediction.riskScore))}</dd>
+                <dd className="font-medium text-slate-800">{formatRiskScore(Number(latestPrediction.riskScore))}</dd>
                 <dt className="text-slate-500">Level</dt>
                 <dd className="text-slate-800">{latestPrediction.riskLevel}</dd>
                 <dt className="text-slate-500">Confidence</dt>

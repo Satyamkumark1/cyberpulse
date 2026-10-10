@@ -123,7 +123,7 @@ Twelve cases in `ai/hallucination-testing.md` plus twelve `TC-INT-*` cases. The 
 ```ts
 // Intercept and rewrite the response, then assert the UI follows it
 await page.route('**/api/predict', r => r.fulfill({ body: JSON.stringify({ ...valid, riskScore: 0.312 }) }));
-await expect(page.getByTestId('risk-score')).toHaveText('31.2%');
+await expect(page.getByTestId('risk-score')).toHaveText('31.2 / 100');
 ```
 
 A hard-coded value passes a constant-based assertion and fails this one. No amount of code review is as reliable.

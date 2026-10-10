@@ -43,7 +43,7 @@ Tables, detail pages and lists are server-rendered. Their rows never enter the J
 
 ## Formatting
 
-Money `₹3,80,000` (Indian grouping, no decimals, from integer paise) · score `91.7%` in UI, `0.917` in metrics · timestamps `14 Sep 2026, 09:12` IST · windows `14:00 – 16:00 IST` · IDs full and monospace · distances `220 m` / `1.4 km` · absent values `—`, never `0`.
+Money `₹3,80,000` (Indian grouping, no decimals, from integer paise) · risk score `91.7 / 100` in UI, never a `%` because it is a ranking score, not a probability (DEC-017), `0.917` in metrics · timestamps `14 Sep 2026, 09:12` IST · windows `14:00 – 16:00 IST` · IDs full and monospace · distances `220 m` / `1.4 km` · absent values `—`, never `0`.
 
 ---
 

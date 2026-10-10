@@ -46,6 +46,7 @@ The degraded-mode test asserts that **no number of any relevant shape** appears:
 
 ```ts
 expect(panel).not.toMatch(/\d+(\.\d+)?%/);
+expect(panel).not.toMatch(/\d+(\.\d+)?\s*\/\s*100/);   // risk score format (DEC-017)
 expect(panel).not.toMatch(/₹[\d,]+/);
 expect(panel).not.toMatch(/\d{2}:\d{2}\s*[–-]\s*\d{2}:\d{2}/);
 ```
@@ -58,7 +59,7 @@ Asserting that specific wrong numbers are absent would miss a placeholder nobody
 
 ```ts
 await page.route('**/api/predict', r => r.fulfill({ body: JSON.stringify({ ...valid, riskScore: 0.312 }) }));
-await expect(page.getByTestId('risk-score')).toHaveText('31.2%');
+await expect(page.getByTestId('risk-score')).toHaveText('31.2 / 100');
 ```
 
 Compare rendered values against the **intercepted response**, never against expected constants. A hard-coded value passes a constant-based assertion and fails this one.

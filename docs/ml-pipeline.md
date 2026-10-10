@@ -66,7 +66,7 @@ Fixed order, numeric only, deterministic, documented defaults, no NaN. `assert_s
 
 - **Split by complaint, never by row.** Sixty rows per complaint means a row split puts the same complaint on both sides.
 - **Keep unreachable complaints** — those whose true cell was never a candidate — as all-negative groups. Dropping them inflates top-k hit rate by excluding the cases the engine cannot solve.
-- `max_depth=5`. Deeper memorises a synthetic generator.
+- `max_depth=6`, the winner of the documented grid search over 3–6 (DEC-018). Deeper memorises a synthetic generator.
 - Optimise **PR-AUC**, not ROC-AUC, at 1:59 imbalance. Report both.
 - Calibrate with isotonic regression. An uncalibrated score shown as a percentage is a false statement.
 - The holdout is touched **once**, by `evaluate.py`.

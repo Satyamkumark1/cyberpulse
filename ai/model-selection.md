@@ -32,7 +32,7 @@ Keeping logistic regression as a baseline is not ceremony. On synthetic data wit
 ```python
 XGBClassifier(
     n_estimators=400,
-    max_depth=5,                 # shallow — depth 8+ memorises planted patterns
+    max_depth=6,                 # grid-search winner over 3–6 (DEC-018); depth 8+ memorises planted patterns
     learning_rate=0.05,
     subsample=0.8,
     colsample_bytree=0.8,
@@ -50,7 +50,7 @@ XGBClassifier(
 
 Two choices deserve their reasons stated.
 
-**`max_depth=5`.** Deep trees on synthetic data with planted patterns produce spectacular training metrics and a model that has memorised the generator. Shallow trees force it to learn the pattern rather than the instances.
+**`max_depth=6`** (grid-search winner over 3–6, DEC-018). Deep trees on synthetic data with planted patterns produce spectacular training metrics and a model that has memorised the generator. Shallow trees force it to learn the pattern rather than the instances; the shuffled-label check and the single holdout touch verify that it has.
 
 **`eval_metric='aucpr'`.** With roughly one positive per sixty candidates, ROC-AUC is optimistic and easy to look good on. PR-AUC is the honest training signal. ROC-AUC is still *reported* because it is the metric an evaluator expects to see, but it is not what the model is tuned against.
 

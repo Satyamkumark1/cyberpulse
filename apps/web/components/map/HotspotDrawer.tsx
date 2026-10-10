@@ -7,7 +7,7 @@ import { RiskBadge } from "@/components/common/RiskBadge";
 import { FactorBar } from "@/components/common/FactorBar";
 import { AlertModal } from "@/components/alerts/AlertModal";
 import { useFocusTrap } from "@/components/common/useFocusTrap";
-import { formatDistanceMeters, formatPaise, formatScorePercent, formatWindowIst } from "@/lib/formatters";
+import { formatDistanceMeters, formatPaise, formatRiskScore, formatWindowIst } from "@/lib/formatters";
 import type { HotspotDetail } from "./types";
 import { LocationDetails } from "./LocationDetails";
 import { apiFetch } from "@/lib/apiFetch";
@@ -67,7 +67,7 @@ export function HotspotDrawer({ h3Index, onClose, embedded = false }: { h3Index:
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <RiskBadge level={data.riskLevel} />
-                <span className="text-lg font-semibold text-slate-800">{formatScorePercent(data.riskScore)}</span>
+                <span className="text-lg font-semibold text-slate-800">{formatRiskScore(data.riskScore)}</span>
               </div>
               {data.predictionRef && data.expectedStart && data.expectedEnd ? (
                 <button

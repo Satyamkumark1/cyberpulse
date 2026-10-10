@@ -7,10 +7,12 @@ export function formatPaise(paise: number): string {
   return `₹${rupees.toLocaleString("en-IN")}`;
 }
 
-// One decimal percentage for the UI (e.g. 62.3%); metrics panels format the
-// underlying 0-1 fraction separately.
-export function formatScorePercent(score: number): string {
-  return `${(score * 100).toFixed(1)}%`;
+// Risk score out of 100, one decimal (e.g. 62.3 / 100). Never a "%": the
+// score ranks areas by blending the model with documented rules, and is not
+// a probability that cash will be withdrawn (DEC-017). Metrics panels format
+// the underlying 0-1 fraction separately.
+export function formatRiskScore(score: number): string {
+  return `${(score * 100).toFixed(1)} / 100`;
 }
 
 const IST_TIMEZONE = "Asia/Kolkata";

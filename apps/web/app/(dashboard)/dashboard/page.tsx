@@ -4,7 +4,7 @@ import { MapCanvasLazy } from "@/components/map/MapCanvasLoader";
 import { RecentAlertsPanel } from "@/components/dashboard/RecentAlertsPanel";
 import { RiskBadge } from "@/components/common/RiskBadge";
 import { StatePanel } from "@/components/common/StatePanel";
-import { formatScorePercent } from "@/lib/formatters";
+import { formatRiskScore } from "@/lib/formatters";
 import { resolveRoleFromNextHeaders } from "@/services/lib/auth";
 import { list as listHotspots } from "@/services/hotspotService";
 
@@ -70,7 +70,7 @@ export default async function DashboardPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <RiskBadge level={h.riskLevel} />
-                      <span className="text-xs text-slate-500">{formatScorePercent(h.riskScore)}</span>
+                      <span className="text-xs text-slate-500">{formatRiskScore(h.riskScore)}</span>
                     </div>
                   </li>
                 ))}

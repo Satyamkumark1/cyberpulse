@@ -1,5 +1,5 @@
 import { RiskBadge } from "@/components/common/RiskBadge";
-import { formatScorePercent, formatWindowIst } from "@/lib/formatters";
+import { formatRiskScore, formatWindowIst } from "@/lib/formatters";
 import type { HotspotListItem } from "./types";
 
 // AC-010-06: the same hotspot data as the layer, as a `<table>`.
@@ -25,7 +25,7 @@ export function MapAccessibleTable({ hotspots, onSelect }: { hotspots: HotspotLi
             <td className="py-2 pr-4">
               <RiskBadge level={h.riskLevel} />
             </td>
-            <td className="py-2 pr-4">{formatScorePercent(h.riskScore)}</td>
+            <td className="py-2 pr-4">{formatRiskScore(h.riskScore)}</td>
             <td className="py-2 pr-4">{h.expectedStart && h.expectedEnd ? formatWindowIst(h.expectedStart, h.expectedEnd) : "—"}</td>
           </tr>
         ))}
