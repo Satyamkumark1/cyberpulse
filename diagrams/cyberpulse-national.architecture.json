@@ -1,0 +1,366 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "CyberPulse national architecture",
+    "output": "national-architecture.html",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1250,
+      560
+    ],
+    "views": [
+      {
+        "id": "officer-path",
+        "label": "Officer forecast path",
+        "focus": [
+          "users",
+          "edge",
+          "web",
+          "ml",
+          "pg"
+        ],
+        "note": "An officer opens a case; the forecast is computed live and saved with its reasons."
+      },
+      {
+        "id": "data-intake",
+        "label": "Complaint and trail intake",
+        "focus": [
+          "sources",
+          "kafka",
+          "graph",
+          "web"
+        ],
+        "note": "NCRP and CFCFRMS feeds stream in; a spike waits in Kafka instead of overloading the database."
+      },
+      {
+        "id": "model-lifecycle",
+        "label": "Model lifecycle",
+        "focus": [
+          "pg",
+          "mlops",
+          "ml"
+        ],
+        "note": "Recorded outcomes retrain the model; only a gate-passing, signed image reaches serving."
+      },
+      {
+        "id": "identity-alerts",
+        "label": "Identity and alerts",
+        "focus": [
+          "sso",
+          "edge",
+          "web",
+          "notify"
+        ],
+        "note": "Officers sign in through government SSO; alerts go to the district cell, bank nodal officer and I4C."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "sso",
+      "type": "security",
+      "label": "Government SSO",
+      "sublabel": "OIDC · state/district scope",
+      "pos": [
+        40,
+        70
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "users",
+      "type": "external",
+      "label": "Officers & citizens",
+      "sublabel": "LEA · bank · I4C · Scam Shield",
+      "pos": [
+        40,
+        230
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "sources",
+      "type": "external",
+      "label": "NCRP · CFCFRMS",
+      "sublabel": "complaints + money trails",
+      "pos": [
+        40,
+        390
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "edge",
+      "type": "security",
+      "label": "Edge gateway",
+      "sublabel": "CDN · WAF · rate limits",
+      "pos": [
+        360,
+        230
+      ],
+      "size": [
+        160,
+        64
+      ],
+      "tag": "DDoS shield"
+    },
+    {
+      "id": "kafka",
+      "type": "messagebus",
+      "label": "Kafka",
+      "sublabel": "adapters + event backbone",
+      "brand": "apache-kafka",
+      "pos": [
+        360,
+        390
+      ],
+      "size": [
+        160,
+        64
+      ],
+      "tag": "buffers spikes"
+    },
+    {
+      "id": "notify",
+      "type": "backend",
+      "label": "Alert dispatcher",
+      "sublabel": "district cell · bank · I4C",
+      "pos": [
+        680,
+        70
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "web",
+      "type": "frontend",
+      "label": "Web + API",
+      "sublabel": "Next.js · services layer",
+      "brand": "next-js",
+      "pos": [
+        680,
+        230
+      ],
+      "size": [
+        160,
+        64
+      ],
+      "tag": "autoscaled pods"
+    },
+    {
+      "id": "graph",
+      "type": "database",
+      "label": "Money-trail graph",
+      "sublabel": "precomputed account links",
+      "pos": [
+        680,
+        390
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "mlops",
+      "type": "backend",
+      "label": "Training & registry",
+      "sublabel": "gates · per-region models",
+      "pos": [
+        1000,
+        70
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "ml",
+      "type": "backend",
+      "label": "Prediction service",
+      "sublabel": "XGBoost · SHAP",
+      "brand": "fastapi",
+      "pos": [
+        1000,
+        230
+      ],
+      "size": [
+        160,
+        64
+      ],
+      "tag": "stateless replicas"
+    },
+    {
+      "id": "pg",
+      "type": "database",
+      "label": "PostgreSQL",
+      "sublabel": "partitioned · RLS by state",
+      "brand": "postgresql",
+      "pos": [
+        1000,
+        390
+      ],
+      "size": [
+        160,
+        64
+      ],
+      "tag": "read replicas"
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "India · MeitY-empanelled cloud or NIC · 2 zones + DR",
+      "wraps": [
+        "edge",
+        "kafka",
+        "notify",
+        "web",
+        "graph",
+        "mlops",
+        "ml",
+        "pg"
+      ],
+      "pad": 40
+    }
+  ],
+  "connections": [
+    {
+      "id": "users-to-edge",
+      "from": "users",
+      "to": "edge",
+      "label": "HTTPS",
+      "variant": "emphasis"
+    },
+    {
+      "id": "sso-to-edge",
+      "from": "sso",
+      "to": "edge",
+      "label": "OIDC token",
+      "variant": "security",
+      "toSide": "top"
+    },
+    {
+      "id": "edge-to-web",
+      "from": "edge",
+      "to": "web",
+      "label": "per-officer limit",
+      "variant": "emphasis"
+    },
+    {
+      "id": "web-to-ml",
+      "from": "web",
+      "to": "ml",
+      "label": "predict · 8 s timeout",
+      "variant": "emphasis"
+    },
+    {
+      "id": "web-to-notify",
+      "from": "web",
+      "to": "notify",
+      "label": "alert + audit"
+    },
+    {
+      "id": "mlops-to-ml",
+      "from": "mlops",
+      "to": "ml",
+      "label": "signed image",
+      "variant": "dashed",
+      "labelDy": 24
+    },
+    {
+      "id": "web-to-pg",
+      "from": "web",
+      "to": "pg",
+      "label": "SQL · one transaction"
+    },
+    {
+      "id": "web-to-graph",
+      "from": "web",
+      "to": "graph",
+      "label": "trail query",
+      "labelDy": 24
+    },
+    {
+      "id": "sources-to-kafka",
+      "from": "sources",
+      "to": "kafka",
+      "label": "PII-minimised feeds"
+    },
+    {
+      "id": "kafka-to-graph",
+      "from": "kafka",
+      "to": "graph",
+      "label": "trail updates"
+    },
+    {
+      "id": "kafka-to-web",
+      "from": "kafka",
+      "to": "web",
+      "label": "forecast job",
+      "variant": "dashed",
+      "fromSide": "top"
+    },
+    {
+      "id": "pg-to-mlops",
+      "from": "pg",
+      "to": "mlops",
+      "label": "outcomes",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "right"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Capacity (design targets)",
+      "items": [
+        "10 M requests/day ≈ 116 per second",
+        "Sized for 10× peaks, about 1,200/s",
+        "Forecast < 1 s; pods scale out"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Resilience",
+      "items": [
+        "2 zones + DR region, all in India",
+        "Kafka queues spikes; nothing lost",
+        "ML down: no numbers, retry offered"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Security",
+      "items": [
+        "Gov SSO; Postgres RLS per state",
+        "Data tier has no internet access",
+        "ML service has no DB credentials"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Kept from the prototype",
+      "items": [
+        "Next.js, FastAPI, PostgreSQL",
+        "One feature module, train + serve",
+        "Predictions are never cached"
+      ]
+    }
+  ]
+}
